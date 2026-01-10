@@ -16,8 +16,8 @@ class S3StorageConfigureTest {
     // Given
     S3Storage storage = new S3Storage();
     Map<String, String> configs = new HashMap<>();
-    configs.put("claimcheck.storage.s3.bucket.name", "test-bucket");
-    configs.put("claimcheck.storage.s3.region", "ap-northeast-1");
+    configs.put("storage.s3.bucket.name", "test-bucket");
+    configs.put("storage.s3.region", "ap-northeast-1");
 
     // When
     storage.configure(configs);
@@ -34,8 +34,8 @@ class S3StorageConfigureTest {
     // Given
     S3Storage storage = new S3Storage();
     Map<String, String> configs = new HashMap<>();
-    configs.put("claimcheck.storage.s3.bucket.name", "test-bucket");
-    configs.put("claimcheck.storage.s3.endpoint.override", "http://localhost:4566");
+    configs.put("storage.s3.bucket.name", "test-bucket");
+    configs.put("storage.s3.endpoint.override", "http://localhost:4566");
 
     // When
     storage.configure(configs);
@@ -50,13 +50,13 @@ class S3StorageConfigureTest {
     // Given
     S3Storage storage = new S3Storage();
     Map<String, String> configs = new HashMap<>();
-    configs.put("claimcheck.storage.s3.region", "ap-northeast-2");
+    configs.put("storage.s3.region", "ap-northeast-2");
 
     // When & Then
     ConfigException exception =
         assertThrows(ConfigException.class, () -> storage.configure(configs));
     assertEquals(
-        "Missing required configuration \"claimcheck.storage.s3.bucket.name\" which has no default value.",
+        "Missing required configuration \"storage.s3.bucket.name\" which has no default value.",
         exception.getMessage());
   }
 }

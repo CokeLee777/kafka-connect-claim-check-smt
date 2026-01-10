@@ -24,8 +24,8 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
       DateTimeFormatter.ofPattern("yyyy/MM/dd").withZone(ZoneId.of("UTC"));
 
   // Config 상수 정의
-  public static final String CONFIG_STORAGE_TYPE = "claimcheck.storage.type";
-  public static final String CONFIG_THRESHOLD_BYTES = "claimcheck.threshold.bytes";
+  public static final String CONFIG_STORAGE_TYPE = "storage.type";
+  public static final String CONFIG_THRESHOLD_BYTES = "threshold.bytes";
 
   // 기본값 설정 (1MB)
   private static final int DEFAULT_THRESHOLD = 1024 * 1024;

@@ -49,10 +49,10 @@ public class S3StorageStoreTest {
   void storeSuccess() {
     // Given
     Map<String, String> configs = new HashMap<>();
-    configs.put("claimcheck.storage.s3.bucket.name", "test-bucket");
-    configs.put("claimcheck.storage.s3.region", localStack.getRegion());
+    configs.put("storage.s3.bucket.name", "test-bucket");
+    configs.put("storage.s3.region", localStack.getRegion());
     configs.put(
-        "claimcheck.storage.s3.endpoint.override",
+        "storage.s3.endpoint.override",
         localStack.getEndpointOverride(LocalStackContainer.Service.S3).toString());
 
     System.setProperty("aws.accessKeyId", localStack.getAccessKey());
@@ -86,10 +86,10 @@ public class S3StorageStoreTest {
   void storeFailNoBucket() {
     // Given
     Map<String, String> configs = new HashMap<>();
-    configs.put("claimcheck.storage.s3.bucket.name", "no-bucket");
-    configs.put("claimcheck.storage.s3.region", localStack.getRegion());
+    configs.put("storage.s3.bucket.name", "no-bucket");
+    configs.put("storage.s3.region", localStack.getRegion());
     configs.put(
-        "claimcheck.s3.endpoint.override",
+        "s3.endpoint.override",
         localStack.getEndpointOverride(LocalStackContainer.Service.S3).toString());
 
     System.setProperty("aws.accessKeyId", localStack.getAccessKey());

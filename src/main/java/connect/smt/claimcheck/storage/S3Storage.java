@@ -13,9 +13,9 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 public class S3Storage implements ClaimCheckStorage {
 
-  public static final String CONFIG_BUCKET_NAME = "claimcheck.storage.s3.bucket.name";
-  public static final String CONFIG_REGION = "claimcheck.storage.s3.region";
-  public static final String CONFIG_ENDPOINT_OVERRIDE = "claimcheck.storage.s3.endpoint.override";
+  public static final String CONFIG_BUCKET_NAME = "storage.s3.bucket.name";
+  public static final String CONFIG_REGION = "storage.s3.region";
+  public static final String CONFIG_ENDPOINT_OVERRIDE = "storage.s3.endpoint.override";
   public static final ConfigDef CONFIG_DEF =
       new ConfigDef()
           .define(
