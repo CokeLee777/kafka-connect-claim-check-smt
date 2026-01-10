@@ -1,4 +1,4 @@
-package connect.smt.claimcheck;
+package connect.smt.claimcheck.storage;
 
 import java.net.URI;
 import java.util.Map;

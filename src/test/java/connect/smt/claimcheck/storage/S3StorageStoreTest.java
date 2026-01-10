@@ -1,5 +1,6 @@
-package connect.smt.claimcheck;
+package connect.smt.claimcheck.storage;
 
+import connect.smt.claimcheck.storage.S3Storage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
