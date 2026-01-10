@@ -1,6 +1,10 @@
 package connect.smt.claimcheck.storage;
 
-import connect.smt.claimcheck.storage.S3Storage;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,16 +18,9 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 @Testcontainers
 public class S3StorageStoreTest {
 
-  // LocalStack 컨테이너 실행 (S3 서비스 활성화)
   @Container
   private static final LocalStackContainer localStack =
       new LocalStackContainer(DockerImageName.parse("localstack/localstack"))
@@ -33,7 +30,6 @@ public class S3StorageStoreTest {
 
   @BeforeEach
   void setUp() {
-    // 검증용 S3 Client 생성 (LocalStack 접속)
     this.s3Client =
         S3Client.builder()
             .endpointOverride(localStack.getEndpointOverride(LocalStackContainer.Service.S3))

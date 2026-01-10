@@ -1,14 +1,12 @@
 package connect.smt.claimcheck.storage;
 
-import connect.smt.claimcheck.storage.S3Storage;
-import org.apache.kafka.common.config.ConfigException;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.apache.kafka.common.config.ConfigException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 class S3StorageConfigureTest {
 
