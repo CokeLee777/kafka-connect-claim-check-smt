@@ -59,6 +59,7 @@ test {
 shadowJar {
     // 'all' 분류자를 붙여서 일반 jar와 구분 (예: my-plugin-1.0.0-all.jar)
     archiveClassifier.set('all')
+    destinationDirectory = file("${buildDir}/libs/kafka-connect-smt-toolkit")
 
     dependencies {
         exclude(dependency("org.apache.kafka:.*"))
@@ -67,8 +68,8 @@ shadowJar {
 
     // 충돌 방지를 위한 패키지 재배치 (Relocation) - 선택 사항이지만 권장
     // 예: 내가 쓰는 Jedis 버전과 Kafka Connect가 내부적으로 쓰는 Jedis가 다를 경우를 대비
-    relocate 'redis.clients', 'connect.smt.claimcheck.shadow.redis.clients'
-    relocate 'software.amazon.awssdk', 'connect.smt.claimcheck.shadow.awssdk'
+    relocate 'redis.clients', 'com.github.cokelee777.shadow.redis.clients'
+    relocate 'software.amazon.awssdk', 'com.github.cokelee777.shadow.awssdk'
 
     mergeServiceFiles()
 }
