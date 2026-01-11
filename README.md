@@ -2,6 +2,13 @@
 
 This repository hosts an open-source toolkit for Kafka Connect Single Message Transforms (SMTs). It provides a collection of reusable SMTs designed to enhance data processing capabilities within Kafka Connect pipelines.
 
+## Technology Stack
+
+- **Java 11** - Core programming language
+- **Kafka Connect** - Kafka's framework for connecting Kafka with external systems
+- **AWS SDK for Java** - Amazon S3 integration for storage backend
+- **Gradle** - Build automation tool with Shadow plugin for uber JAR creation
+
 ## Features
 
 ### ClaimCheck SMT
@@ -10,6 +17,17 @@ The initial SMT included in this toolkit is the **ClaimCheck SMT**. This transfo
 
 **Current Storage Backends:**
 *   Amazon S3
+
+**Supported Connectors:**
+
+The ClaimCheck SMT works with any Kafka Connect **Source Connector** that produces structured data (Schema + Struct). It has been tested with:
+
+*   **Debezium MySQL CDC Connector** - Change Data Capture for MySQL databases
+*   **Debezium PostgreSQL CDC Connector** - Change Data Capture for PostgreSQL databases
+*   **JDBC Source Connector** - Bulk and incremental data ingestion from relational databases
+*   Any other Source Connector that produces `org.apache.kafka.connect.data.Struct` records
+
+**Note:** The ClaimCheck SMT operates on `SourceRecord` objects before they are serialized by Converters, working directly with Kafka Connect's internal `Schema` and `Struct` data structures.
 
 #### Configuration
 
