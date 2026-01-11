@@ -31,24 +31,24 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
   private static final int DEFAULT_THRESHOLD = 1024 * 1024;
   private static final String DEFAULT_STORAGE_TYPE = "S3";
 
-  private ClaimCheckStorage storage;
-  private int thresholdBytes;
-
   // ConfigDef (설정 정의)
   public static final ConfigDef CONFIG_DEF =
-      new ConfigDef()
-          .define(
-              CONFIG_STORAGE_TYPE,
-              ConfigDef.Type.STRING,
-              DEFAULT_STORAGE_TYPE,
-              ConfigDef.Importance.HIGH,
-              "Storage implementation type (e.g., S3, REDIS)")
-          .define(
-              CONFIG_THRESHOLD_BYTES,
-              ConfigDef.Type.INT,
-              DEFAULT_THRESHOLD,
-              ConfigDef.Importance.HIGH,
-              "Payload size threshold in bytes");
+          new ConfigDef()
+                  .define(
+                          CONFIG_STORAGE_TYPE,
+                          ConfigDef.Type.STRING,
+                          DEFAULT_STORAGE_TYPE,
+                          ConfigDef.Importance.HIGH,
+                          "Storage implementation type (e.g., S3, REDIS)")
+                  .define(
+                          CONFIG_THRESHOLD_BYTES,
+                          ConfigDef.Type.INT,
+                          DEFAULT_THRESHOLD,
+                          ConfigDef.Importance.HIGH,
+                          "Payload size threshold in bytes");
+
+  private ClaimCheckStorage storage;
+  private int thresholdBytes;
 
   public ClaimCheckSourceTransform() {}
 
