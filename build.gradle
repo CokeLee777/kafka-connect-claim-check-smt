@@ -1,10 +1,11 @@
 plugins {
     id 'java'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'maven-publish'
 }
 
 group = 'com.github.cokelee777'
-version = '1.0.0'
+version = '0.0.1'
 
 sourceCompatibility = '11'
 targetCompatibility = '11'
@@ -59,8 +60,7 @@ test {
 }
 
 shadowJar {
-    // 'all' 분류자를 붙여서 일반 jar와 구분 (예: my-plugin-1.0.0-all.jar)
-    archiveClassifier.set('all')
+    archiveClassifier.set('')
     destinationDirectory = file("${buildDir}/libs/kafka-connect-smt-toolkit")
 
     dependencies {
@@ -74,4 +74,29 @@ shadowJar {
     relocate 'software.amazon.awssdk', 'com.github.cokelee777.shadow.awssdk'
 
     mergeServiceFiles()
+}
+
+publishing {
+    publications {
+        gpr(MavenPublication) {
+            artifact shadowJar
+
+            groupId = group
+            artifactId = 'kafka-connect-smt-toolkit'
+            version = version
+        }
+    }
+
+    // 3. 배포할 저장소 위치 (GitHub Packages)
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/cokelee777/kafka-connect-smt-toolkit")
+
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
 }
