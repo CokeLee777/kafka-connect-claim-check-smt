@@ -27,6 +27,7 @@ ext {
 dependencies {
     compileOnly "org.apache.kafka:connect-api:${kafkaVersion}"
     compileOnly "org.apache.kafka:connect-transforms:${kafkaVersion}"
+    compileOnly "org.apache.kafka:connect-json:${kafkaVersion}"
 
     implementation "software.amazon.awssdk:s3:${awsSdkVersion}"
     implementation "redis.clients:jedis:${jedisVersion}"
@@ -46,6 +47,7 @@ dependencies {
 
     testImplementation "org.apache.kafka:connect-api:${kafkaVersion}"
     testImplementation "org.apache.kafka:connect-transforms:${kafkaVersion}"
+    testImplementation "org.apache.kafka:connect-json:${kafkaVersion}"
     testImplementation "com.redis.testcontainers:testcontainers-redis-junit:1.6.4"
     testImplementation "org.slf4j:slf4j-simple:${slf4jVersion}"
 }

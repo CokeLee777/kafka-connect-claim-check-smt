@@ -8,12 +8,16 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.S3Storage;
 
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +51,17 @@ class S3ClaimCheckSourceTransformTest {
     Field thresholdField = ClaimCheckSourceTransform.class.getDeclaredField("thresholdBytes");
     thresholdField.setAccessible(true);
     thresholdField.set(transform, threshold);
+
+    // JsonConverter 초기화 및 주입
+    JsonConverter converter = new JsonConverter();
+    Map<String, Object> config = new HashMap<>();
+    config.put("schemas.enable", "false");
+    config.put("converter.type", "value");
+    converter.configure(config);
+
+    Field jsonConverterField = ClaimCheckSourceTransform.class.getDeclaredField("jsonConverter");
+    jsonConverterField.setAccessible(true);
+    jsonConverterField.set(transform, converter);
   }
 
   @Test
@@ -109,8 +124,9 @@ class S3ClaimCheckSourceTransformTest {
     SourceRecord result = transform.apply(record);
 
     // Then
-    assertEquals(expectedUrl, result.value());
-    assertEquals(Schema.STRING_SCHEMA, result.valueSchema());
+    assertTrue(result.value() instanceof Struct);
+    Struct resultStruct = (Struct) result.value();
+    assertEquals(expectedUrl, resultStruct.getString("reference_url"));
     verify(mockStorage).store(anyString(), eq(value));
   }
 
@@ -132,8 +148,52 @@ class S3ClaimCheckSourceTransformTest {
     SourceRecord result = transform.apply(record);
 
     // Then
-    assertEquals(expectedUrl, result.value());
+    assertTrue(result.value() instanceof Struct);
+    Struct resultStruct = (Struct) result.value();
+    assertEquals(expectedUrl, resultStruct.getString("reference_url"));
     verify(mockStorage).store(anyString(), eq(value.getBytes(StandardCharsets.UTF_8)));
+  }
+
+  @Test
+  @DisplayName("Struct 타입의 큰 데이터도 처리되어야 한다")
+  void testApplyLargePayloadStruct() throws Exception {
+    // Given
+    injectDependencies(mockStorage, 1);
+
+    Schema originalSchema = SchemaBuilder.struct()
+            .name("com.example.OriginalUser")
+            .field("username", Schema.STRING_SCHEMA)
+            .build();
+    Struct originalStruct = new Struct(originalSchema)
+            .put("username", "cokelee777_is_testing");
+
+    String expectedUrl = "s3://bucket/topics/test-topic/9999/12/31/test.json";
+
+    // When
+    when(mockStorage.store(anyString(), any(byte[].class))).thenReturn(expectedUrl);
+
+    SourceRecord record =
+            new SourceRecord(null, null, "test-topic", 0, originalSchema, originalStruct);
+
+    SourceRecord result = transform.apply(record);
+
+    // Then
+    assertTrue(result.value() instanceof Struct, "결과값은 Struct 타입이어야 합니다.");
+    Struct resultStruct = (Struct) result.value();
+    assertEquals(
+            ClaimCheckSourceTransform.REFERENCE_SCHEMA_NAME,
+            result.valueSchema().name(),
+            "스키마 이름이 ClaimCheckReference여야 합니다."
+    );
+
+    assertEquals(expectedUrl, resultStruct.getString("reference_url"));
+    assertTrue(resultStruct.getInt64("original_size_bytes") > 1);
+
+    ArgumentCaptor<byte[]> bytesCaptor = ArgumentCaptor.forClass(byte[].class);
+    verify(mockStorage).store(anyString(), bytesCaptor.capture());
+
+    String uploadedContent = new String(bytesCaptor.getValue(), StandardCharsets.UTF_8);
+    assertTrue(uploadedContent.contains("cokelee777_is_testing"), "업로드된 JSON에 원본 데이터가 포함되어야 합니다.");
   }
 
   @Test
@@ -166,16 +226,16 @@ class S3ClaimCheckSourceTransformTest {
     // Then
     String capturedKey = keyCaptor.getValue();
     assertTrue(capturedKey.startsWith("topics/test-topic/2024/01/01/"));
-    assertTrue(capturedKey.endsWith(".json"));
+    assertTrue(capturedKey.endsWith(".txt"));
   }
 
   @Test
-  @DisplayName("지원하지 않는 값 타입(Map, Struct 등)은 무시하고 통과해야 한다")
+  @DisplayName("지원하지 않는 값 타입(List)은 무시하고 통과해야 한다")
   void testUnsupportedValueType() throws Exception {
     // Given
     injectDependencies(mockStorage, 1);
 
-    Map<String, String> value = Collections.singletonMap("key", "value");
+    List<String> value = Collections.singletonList("value");
     SourceRecord record = new SourceRecord(null, null, "test-topic", 0, null, value);
 
     // When

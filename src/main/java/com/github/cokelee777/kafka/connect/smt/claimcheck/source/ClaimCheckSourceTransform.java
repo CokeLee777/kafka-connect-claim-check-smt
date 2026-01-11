@@ -6,14 +6,18 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.Transformation;
-import org.apache.kafka.connect.transforms.util.SimpleConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +35,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
   private static final int DEFAULT_THRESHOLD = 1024 * 1024;
   private static final String DEFAULT_STORAGE_TYPE = "S3";
 
-  // ConfigDef (설정 정의)
+  // Storage ConfigDef
   public static final ConfigDef CONFIG_DEF =
       new ConfigDef()
           .define(
@@ -47,30 +51,61 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
               ConfigDef.Importance.HIGH,
               "Payload size threshold in bytes");
 
+  public static final String REFERENCE_SCHEMA_NAME =
+      "com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckReference";
+  public static final Schema REFERENCE_SCHEMA =
+      SchemaBuilder.struct()
+          .name(REFERENCE_SCHEMA_NAME)
+          .field("reference_url", Schema.STRING_SCHEMA)
+          .field("original_size_bytes", Schema.INT64_SCHEMA)
+          .field("uploaded_at", Schema.INT64_SCHEMA)
+          .build();
+
   private ClaimCheckStorage storage;
   private int thresholdBytes;
+  private JsonConverter jsonConverter;
+
+  private static class TransformConfig extends AbstractConfig {
+    TransformConfig(Map<String, ?> originals) {
+      super(CONFIG_DEF, originals);
+    }
+  }
 
   public ClaimCheckSourceTransform() {}
 
   @Override
   public void configure(Map<String, ?> configs) {
-    SimpleConfig config = new SimpleConfig(CONFIG_DEF, configs);
+    TransformConfig config = new TransformConfig(configs);
 
-    String storageType = config.getString(CONFIG_STORAGE_TYPE);
     this.thresholdBytes = config.getInt(CONFIG_THRESHOLD_BYTES);
+    String storageType = config.getString(CONFIG_STORAGE_TYPE);
 
-    if ("S3".equalsIgnoreCase(storageType)) {
-      this.storage = new S3Storage();
-    } else {
-      throw new ConfigException("Unsupported storage type: " + storageType);
-    }
-
+    this.storage = initStorage(storageType);
     this.storage.configure(configs);
+
+    this.jsonConverter = initJsonConverter();
 
     log.info(
         "ClaimCheckTransform initialized. Threshold: {} bytes, Storage: {}",
         this.thresholdBytes,
         storageType);
+  }
+
+  protected ClaimCheckStorage initStorage(String type) {
+    if ("S3".equalsIgnoreCase(type)) {
+      return new S3Storage();
+    }
+
+    throw new ConfigException("Unsupported storage type: " + type);
+  }
+
+  private JsonConverter initJsonConverter() {
+    JsonConverter converter = new JsonConverter();
+    Map<String, Object> config = new HashMap<>();
+    config.put("schemas.enable", "false");
+    config.put("converter.type", "value");
+    converter.configure(config);
+    return converter;
   }
 
   @Override
@@ -79,17 +114,23 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
       return record;
     }
 
-    byte[] valueBytes = getBytesFromValue(record.value());
+    byte[] valueBytes = convertValueToBytes(record);
     if (valueBytes == null) {
       return record;
     }
 
-    if (valueBytes.length <= thresholdBytes) {
+    if (valueBytes.length <= this.thresholdBytes) {
       return record;
     }
 
     String key = generateObjectKey(record);
     String referenceUrl = storage.store(key, valueBytes);
+
+    Struct referenceStruct =
+        new Struct(REFERENCE_SCHEMA)
+            .put("reference_url", referenceUrl)
+            .put("original_size_bytes", (long) valueBytes.length)
+            .put("uploaded_at", Instant.now().toEpochMilli());
 
     log.info(
         "Payload too large ({} bytes). Uploaded to storage: {}", valueBytes.length, referenceUrl);
@@ -99,16 +140,24 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
         record.kafkaPartition(),
         record.keySchema(),
         record.key(),
-        record.valueSchema() != null ? Schema.STRING_SCHEMA : null,
-        referenceUrl,
+        REFERENCE_SCHEMA,
+        referenceStruct,
         record.timestamp());
   }
 
-  private byte[] getBytesFromValue(Object value) {
+  private byte[] convertValueToBytes(SourceRecord record) {
+    Object value = record.value();
+
+    if (value == null) {
+      return null;
+    }
+
     if (value instanceof byte[]) {
       return (byte[]) value;
     } else if (value instanceof String) {
       return ((String) value).getBytes(StandardCharsets.UTF_8);
+    } else if (value instanceof Struct || value instanceof Map) {
+      return jsonConverter.fromConnectData(record.topic(), record.valueSchema(), value);
     }
 
     log.warn("Unsupported value type for Claim Check: {}", value.getClass().getName());
@@ -131,17 +180,16 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
   }
 
   private String resolveExtension(SourceRecord record) {
-    if (record.valueSchema() == null) {
-      return "bin";
+    Object value = record.value();
+
+    // Struct(Avro)나 Map(JSON)은 JsonConverter를 통하므로 무조건 json
+    if (value instanceof Struct || value instanceof Map) {
+      return "json";
     }
 
-    String schemaName = record.valueSchema().name();
-    if (schemaName == null) {
-      return "bin";
+    if (value instanceof String) {
+      return "txt";
     }
-
-    if (schemaName.contains("avro")) return "avro";
-    if (schemaName.contains("json")) return "json";
 
     return "bin";
   }
