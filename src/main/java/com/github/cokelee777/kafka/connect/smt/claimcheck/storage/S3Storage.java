@@ -5,6 +5,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
@@ -89,7 +90,9 @@ public class S3Storage implements ClaimCheckStorage {
     this.endpointOverride = ConfigUtils.getOptionalString(config, CONFIG_ENDPOINT_OVERRIDE);
 
     S3ClientBuilder builder =
-        S3Client.builder().credentialsProvider(DefaultCredentialsProvider.builder().build());
+        S3Client.builder()
+            .httpClient(UrlConnectionHttpClient.builder().build())
+            .credentialsProvider(DefaultCredentialsProvider.builder().build());
 
     builder.region(Region.of(this.region));
 
