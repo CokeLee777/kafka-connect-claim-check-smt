@@ -251,7 +251,6 @@ class S3StorageTest {
         // When & Then
         assertThrows(Exception.class, () -> storage.configure(configs));
       }
-
     }
   }
 
@@ -399,8 +398,7 @@ class S3StorageTest {
 
         // When & Then
         IllegalStateException exception =
-            assertThrows(
-                IllegalStateException.class, () -> unconfiguredStorage.store(key, data));
+            assertThrows(IllegalStateException.class, () -> unconfiguredStorage.store(key, data));
         assertEquals(
             "S3Client is not initialized. Call configure() first.", exception.getMessage());
       }
