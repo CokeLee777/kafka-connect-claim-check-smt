@@ -4,11 +4,8 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStor
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.S3Storage;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
@@ -24,8 +21,6 @@ import org.slf4j.LoggerFactory;
 public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
   private static final Logger log = LoggerFactory.getLogger(ClaimCheckSourceTransform.class);
-  private static final DateTimeFormatter DATE_FORMATTER =
-      DateTimeFormatter.ofPattern("yyyy/MM/dd").withZone(ZoneId.of("UTC"));
 
   // Config 상수 정의
   public static final String CONFIG_STORAGE_TYPE = "storage.type";
@@ -123,8 +118,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
       return record;
     }
 
-    String key = generateObjectKey(record);
-    String referenceUrl = storage.store(key, valueBytes);
+    String referenceUrl = storage.store(valueBytes);
 
     Struct referenceStruct =
         new Struct(REFERENCE_SCHEMA)
@@ -162,36 +156,6 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
     log.warn("Unsupported value type for Claim Check: {}", value.getClass().getName());
     return null;
-  }
-
-  private String generateObjectKey(SourceRecord record) {
-    Long timestamp = record.timestamp();
-    Instant instant;
-
-    if (timestamp == null) {
-      instant = Instant.now();
-    } else {
-      instant = Instant.ofEpochMilli(timestamp);
-    }
-
-    String datePath = DATE_FORMATTER.format(instant);
-    String extension = resolveExtension(record);
-    return "topics/" + record.topic() + "/" + datePath + "/" + UUID.randomUUID() + "." + extension;
-  }
-
-  private String resolveExtension(SourceRecord record) {
-    Object value = record.value();
-
-    // Struct(Avro)나 Map(JSON)은 JsonConverter를 통하므로 무조건 json
-    if (value instanceof Struct || value instanceof Map) {
-      return "json";
-    }
-
-    if (value instanceof String) {
-      return "txt";
-    }
-
-    return "bin";
   }
 
   @Override
