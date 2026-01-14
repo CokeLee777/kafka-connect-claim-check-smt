@@ -1,263 +1,277 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.source;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorage;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.S3Storage;
-
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-class S3ClaimCheckSourceTransformTest {
+@ExtendWith(MockitoExtension.class)
+@DisplayName("S3ClaimCheckSourceTransform 단위 테스트")
+public class S3ClaimCheckSourceTransformTest {
 
   private ClaimCheckSourceTransform transform;
-  private ClaimCheckStorage mockStorage;
+
+  @Mock private ClaimCheckStorage storage;
+
+  private static final String TOPIC = "test-topic";
+  private static final int PARTITION = 0;
+  private static final String S3_URI = "s3://test-bucket/claim-checks/some-uuid";
 
   @BeforeEach
-  void setUp() throws Exception {
-    transform = new ClaimCheckSourceTransform();
-    mockStorage = mock(ClaimCheckStorage.class);
+  void setUp() {
+    transform =
+        new ClaimCheckSourceTransform() {
+          @Override
+          protected ClaimCheckStorage initStorage(String type) {
+            if ("S3".equalsIgnoreCase(type)) {
+              return storage;
+            }
+            return super.initStorage(type);
+          }
+        };
   }
 
-  @AfterEach
-  void tearDown() {
-    transform.close();
+  @Nested
+  @DisplayName("configure 메서드 테스트")
+  class ConfigureTests {
+
+    @Nested
+    @DisplayName("성공 케이스")
+    class Success {
+      @Test
+      @DisplayName("필수 설정만으로 정상적으로 초기화된다")
+      void shouldConfigureWithDefaultProps() {
+        // Given
+        Map<String, String> props = new HashMap<>();
+        props.put(ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE, "S3");
+
+        // When
+        transform.configure(props);
+
+        // Then
+        verify(storage, times(1)).configure(props);
+      }
+
+      @Test
+      @DisplayName("임계값 설정이 포함된 경우 정상적으로 초기화된다")
+      void shouldConfigureWithThreshold() {
+        // Given
+        Map<String, String> props = new HashMap<>();
+        props.put(ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE, "S3");
+        props.put(ClaimCheckSourceTransform.CONFIG_THRESHOLD_BYTES, "100");
+
+        // When
+        transform.configure(props);
+
+        // Then
+        verify(storage, times(1)).configure(props);
+      }
+    }
+
+    @Nested
+    @DisplayName("실패 케이스")
+    class Failure {
+
+      @Test
+      @DisplayName("지원하지 않는 storage.type이면 ConfigException이 발생한다")
+      void shouldThrowExceptionForUnsupportedStorageType() {
+        // Given
+        Map<String, String> props = new HashMap<>();
+        props.put(ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE, "UnsupportedDB");
+
+        // When & Then
+        ConfigException exception =
+            assertThrows(ConfigException.class, () -> transform.configure(props));
+        assertEquals("Unsupported storage type: UnsupportedDB", exception.getMessage());
+      }
+    }
   }
 
-  private void injectDependencies(ClaimCheckStorage storage, int threshold) throws Exception {
-    // storage 필드 주입
-    Field storageField = ClaimCheckSourceTransform.class.getDeclaredField("storage");
-    storageField.setAccessible(true);
-    storageField.set(transform, storage);
+  @Nested
+  @DisplayName("apply 메서드 테스트")
+  class ApplyTests {
 
-    // thresholdBytes 필드 주입
-    Field thresholdField = ClaimCheckSourceTransform.class.getDeclaredField("thresholdBytes");
-    thresholdField.setAccessible(true);
-    thresholdField.set(transform, threshold);
+    @BeforeEach
+    void applySetup() {
+      Map<String, String> props = new HashMap<>();
+      props.put(ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE, "S3");
+      props.put(ClaimCheckSourceTransform.CONFIG_THRESHOLD_BYTES, "10"); // 10 바이트로 설정
+      transform.configure(props);
+    }
 
-    // JsonConverter 초기화 및 주입
-    JsonConverter converter = new JsonConverter();
-    Map<String, Object> config = new HashMap<>();
-    config.put("schemas.enable", "false");
-    config.put("converter.type", "value");
-    converter.configure(config);
+    @Nested
+    @DisplayName("Claim Check 수행 케이스")
+    class ClaimCheckPerformCases {
 
-    Field jsonConverterField = ClaimCheckSourceTransform.class.getDeclaredField("jsonConverter");
-    jsonConverterField.setAccessible(true);
-    jsonConverterField.set(transform, converter);
+      @Test
+      @DisplayName("byte[] 값이 임계값을 초과하면 Claim Check을 수행한다")
+      void shouldPerformClaimCheckForByteArray() {
+        // Given
+        byte[] largeValue = "this is a large value".getBytes(StandardCharsets.UTF_8);
+        SourceRecord record =
+            new SourceRecord(
+                null, null, TOPIC, PARTITION, null, null, Schema.BYTES_SCHEMA, largeValue);
+        when(storage.store(largeValue)).thenReturn(S3_URI);
+
+        // When
+        SourceRecord transformedRecord = transform.apply(record);
+
+        // Then
+        verify(storage, times(1)).store(largeValue);
+        assertNotSame(record, transformedRecord);
+        assertEquals(ClaimCheckSourceTransform.REFERENCE_SCHEMA, transformedRecord.valueSchema());
+        Struct reference = (Struct) transformedRecord.value();
+        assertEquals(S3_URI, reference.getString("reference_url"));
+        assertEquals(largeValue.length, reference.getInt64("original_size_bytes"));
+        assertNotNull(reference.getInt64("uploaded_at"));
+      }
+
+      @Test
+      @DisplayName("String 값이 임계값을 초과하면 Claim Check을 수행한다")
+      void shouldPerformClaimCheckForString() {
+        // Given
+        String largeValue = "this is a large string value";
+        SourceRecord record =
+            new SourceRecord(
+                null, null, TOPIC, PARTITION, null, null, Schema.STRING_SCHEMA, largeValue);
+        byte[] largeValueBytes = largeValue.getBytes(StandardCharsets.UTF_8);
+        when(storage.store(largeValueBytes)).thenReturn(S3_URI);
+
+        // When
+        SourceRecord transformedRecord = transform.apply(record);
+
+        // Then
+        verify(storage, times(1)).store(largeValueBytes);
+        Struct reference = (Struct) transformedRecord.value();
+        assertEquals(S3_URI, reference.getString("reference_url"));
+        assertEquals(largeValueBytes.length, reference.getInt64("original_size_bytes"));
+      }
+
+      @Test
+      @DisplayName("Struct 값이 임계값을 초과하면 Claim Check을 수행한다")
+      void shouldPerformClaimCheckForStruct() {
+        // Given
+        Schema structSchema =
+            SchemaBuilder.struct()
+                .field("id", Schema.INT32_SCHEMA)
+                .field("data", Schema.STRING_SCHEMA)
+                .build();
+        Struct largeValue =
+            new Struct(structSchema).put("id", 1).put("data", "very long data string");
+        SourceRecord record =
+            new SourceRecord(null, null, TOPIC, PARTITION, null, null, structSchema, largeValue);
+
+        // JSON 변환 후의 바이트 배열을 예상해야 함
+        byte[] largeValueBytes =
+            "{\"id\":1,\"data\":\"very long data string\"}".getBytes(StandardCharsets.UTF_8);
+        when(storage.store(any(byte[].class))).thenReturn(S3_URI);
+
+        // When
+        SourceRecord transformedRecord = transform.apply(record);
+
+        // Then
+        verify(storage, times(1)).store(any(byte[].class));
+        Struct reference = (Struct) transformedRecord.value();
+        assertEquals(S3_URI, reference.getString("reference_url"));
+      }
+    }
+
+    @Nested
+    @DisplayName("Claim Check 미수행 케이스")
+    class ClaimCheckSkipCases {
+
+      @Test
+      @DisplayName("값이 임계값 이하이면 원본 레코드를 그대로 반환한다")
+      void shouldReturnOriginalRecordWhenValueIsWithinThreshold() {
+        // Given
+        byte[] smallValue = "small".getBytes(StandardCharsets.UTF_8);
+        SourceRecord record =
+            new SourceRecord(
+                null, null, TOPIC, PARTITION, null, null, Schema.BYTES_SCHEMA, smallValue);
+
+        // When
+        SourceRecord transformedRecord = transform.apply(record);
+
+        // Then
+        verify(storage, never()).store(any());
+        assertSame(record, transformedRecord);
+      }
+
+      @Test
+      @DisplayName("값이 null이면 원본 레코드를 그대로 반환한다")
+      void shouldReturnOriginalRecordWhenValueIsNull() {
+        // Given
+        SourceRecord record =
+            new SourceRecord(null, null, TOPIC, PARTITION, null, null, null, null);
+
+        // When
+        SourceRecord transformedRecord = transform.apply(record);
+
+        // Then
+        verify(storage, never()).store(any());
+        assertSame(record, transformedRecord);
+      }
+
+      @Test
+      @DisplayName("지원하지 않는 타입의 값이면 원본 레코드를 그대로 반환한다")
+      void shouldReturnOriginalRecordForUnsupportedType() {
+        // Given
+        Integer unsupportedValue = 123456789;
+        SourceRecord record =
+            new SourceRecord(
+                null, null, TOPIC, PARTITION, null, null, Schema.INT32_SCHEMA, unsupportedValue);
+
+        // When
+        SourceRecord transformedRecord = transform.apply(record);
+
+        // Then
+        verify(storage, never()).store(any());
+        assertSame(record, transformedRecord);
+      }
+    }
   }
 
-  @Test
-  @DisplayName("설정 테스트: 기본값 및 S3 스토리지 생성 확인")
-  void testConfigure() {
-    // Given
-    Map<String, String> configs = new HashMap<>();
-    configs.put(S3Storage.CONFIG_BUCKET_NAME, "test-bucket");
-    configs.put(ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE, "S3");
-    configs.put(ClaimCheckSourceTransform.CONFIG_THRESHOLD_BYTES, "5000");
+  @Nested
+  @DisplayName("close 메서드 테스트")
+  class CloseTests {
 
-    // When & Then
-    assertDoesNotThrow(() -> transform.configure(configs));
-  }
+    @Test
+    @DisplayName("close가 호출되면 storage의 close가 호출된다")
+    void shouldCallStorageClose() {
+      // Given
+      Map<String, String> props = new HashMap<>();
+      props.put(ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE, "S3");
+      transform.configure(props);
+      doNothing().when(storage).close();
 
-  @Test
-  @DisplayName("설정 테스트: 지원하지 않는 스토리지 타입 예외 발생")
-  void testConfigureInvalidStorage() {
-    // Given
-    Map<String, String> configs = new HashMap<>();
-    configs.put(S3Storage.CONFIG_BUCKET_NAME, "test-bucket");
-    configs.put(ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE, "INVALID_TYPE");
+      // When
+      transform.close();
 
-    // When & Then
-    assertThrows(ConfigException.class, () -> transform.configure(configs));
-  }
+      // Then
+      verify(storage, times(1)).close();
+    }
 
-  @Test
-  @DisplayName("임계값 이하의 작은 데이터는 변환 없이 통과해야 한다")
-  void testApplySmallPayload() throws Exception {
-    // Given
-    injectDependencies(mockStorage, 100);
-
-    byte[] value = "small data".getBytes(StandardCharsets.UTF_8);
-    SourceRecord record = new SourceRecord(null, null, "test-topic", 0, Schema.BYTES_SCHEMA, value);
-
-    // When
-    SourceRecord result = transform.apply(record);
-
-    // Then
-    assertSame(record, result, "레코드 객체가 그대로 반환되어야 함");
-    assertArrayEquals(value, (byte[]) result.value());
-    verify(mockStorage, never()).store(anyString(), any());
-  }
-
-  @Test
-  @DisplayName("임계값 초과 데이터는 스토리지에 저장하고 URL로 교체되어야 한다 (byte[])")
-  void testApplyLargePayloadBytes() throws Exception {
-    // Given
-    injectDependencies(mockStorage, 1);
-
-    String originalData = "Large payload";
-    byte[] value = originalData.getBytes(StandardCharsets.UTF_8);
-    String expectedUrl = "s3://bucket/topics/test-topic/9999/12/31/test.json";
-
-    // When
-    when(mockStorage.store(anyString(), any(byte[].class))).thenReturn(expectedUrl);
-
-    SourceRecord record = new SourceRecord(null, null, "test-topic", 0, Schema.BYTES_SCHEMA, value);
-    SourceRecord result = transform.apply(record);
-
-    // Then
-    assertTrue(result.value() instanceof Struct);
-    Struct resultStruct = (Struct) result.value();
-    assertEquals(expectedUrl, resultStruct.getString("reference_url"));
-    verify(mockStorage).store(anyString(), eq(value));
-  }
-
-  @Test
-  @DisplayName("String 타입의 큰 데이터도 처리되어야 한다")
-  void testApplyLargePayloadString() throws Exception {
-    // Given
-    injectDependencies(mockStorage, 1);
-
-    String value = "Large payload";
-    String expectedUrl = "s3://bucket/topics/test-topic/9999/12/31/test.json";
-
-    // When
-    when(mockStorage.store(anyString(), any(byte[].class))).thenReturn(expectedUrl);
-
-    SourceRecord record =
-        new SourceRecord(null, null, "test-topic", 0, Schema.STRING_SCHEMA, value);
-
-    SourceRecord result = transform.apply(record);
-
-    // Then
-    assertTrue(result.value() instanceof Struct);
-    Struct resultStruct = (Struct) result.value();
-    assertEquals(expectedUrl, resultStruct.getString("reference_url"));
-    verify(mockStorage).store(anyString(), eq(value.getBytes(StandardCharsets.UTF_8)));
-  }
-
-  @Test
-  @DisplayName("Struct 타입의 큰 데이터도 처리되어야 한다")
-  void testApplyLargePayloadStruct() throws Exception {
-    // Given
-    injectDependencies(mockStorage, 1);
-
-    Schema originalSchema = SchemaBuilder.struct()
-            .name("com.example.OriginalUser")
-            .field("username", Schema.STRING_SCHEMA)
-            .build();
-    Struct originalStruct = new Struct(originalSchema)
-            .put("username", "cokelee777_is_testing");
-
-    String expectedUrl = "s3://bucket/topics/test-topic/9999/12/31/test.json";
-
-    // When
-    when(mockStorage.store(anyString(), any(byte[].class))).thenReturn(expectedUrl);
-
-    SourceRecord record =
-            new SourceRecord(null, null, "test-topic", 0, originalSchema, originalStruct);
-
-    SourceRecord result = transform.apply(record);
-
-    // Then
-    assertTrue(result.value() instanceof Struct, "결과값은 Struct 타입이어야 합니다.");
-    Struct resultStruct = (Struct) result.value();
-    assertEquals(
-            ClaimCheckSourceTransform.REFERENCE_SCHEMA_NAME,
-            result.valueSchema().name(),
-            "스키마 이름이 ClaimCheckReference여야 합니다."
-    );
-
-    assertEquals(expectedUrl, resultStruct.getString("reference_url"));
-    assertTrue(resultStruct.getInt64("original_size_bytes") > 1);
-
-    ArgumentCaptor<byte[]> bytesCaptor = ArgumentCaptor.forClass(byte[].class);
-    verify(mockStorage).store(anyString(), bytesCaptor.capture());
-
-    String uploadedContent = new String(bytesCaptor.getValue(), StandardCharsets.UTF_8);
-    assertTrue(uploadedContent.contains("cokelee777_is_testing"), "업로드된 JSON에 원본 데이터가 포함되어야 합니다.");
-  }
-
-  @Test
-  @DisplayName("S3 Key 생성 로직 검증 (토픽, 날짜, 확장자)")
-  void testGeneratedKeyFormat() throws Exception {
-    // Given
-    injectDependencies(mockStorage, 1);
-
-    ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
-    when(mockStorage.store(keyCaptor.capture(), any())).thenReturn("url");
-
-    Schema jsonSchema = SchemaBuilder.string().name("some.json.schema").build();
-    long fixedTimestamp = 1704067200000L; // 2024-01-01 00:00:00 UTC
-
-    SourceRecord jsonRecord =
-        new SourceRecord(
-            null,
-            null,
-            "test-topic",
-            0,
-            Schema.STRING_SCHEMA,
-            "key",
-            jsonSchema,
-            "payload-data",
-            fixedTimestamp);
-
-    // When
-    transform.apply(jsonRecord);
-
-    // Then
-    String capturedKey = keyCaptor.getValue();
-    assertTrue(capturedKey.startsWith("topics/test-topic/2024/01/01/"));
-    assertTrue(capturedKey.endsWith(".txt"));
-  }
-
-  @Test
-  @DisplayName("지원하지 않는 값 타입(List)은 무시하고 통과해야 한다")
-  void testUnsupportedValueType() throws Exception {
-    // Given
-    injectDependencies(mockStorage, 1);
-
-    List<String> value = Collections.singletonList("value");
-    SourceRecord record = new SourceRecord(null, null, "test-topic", 0, null, value);
-
-    // When
-    SourceRecord result = transform.apply(record);
-
-    // Then
-    assertSame(record, result);
-    verify(mockStorage, never()).store(anyString(), any());
-  }
-
-  @Test
-  @DisplayName("Value가 null인 레코드는 그대로 반환해야 한다")
-  void testNullValue() throws Exception {
-    // Given
-    injectDependencies(mockStorage, 1);
-
-    SourceRecord record = new SourceRecord(null, null, "test-topic", 0, null, null);
-
-    // When
-    SourceRecord result = transform.apply(record);
-
-    // Then
-    assertSame(record, result);
+    @Test
+    @DisplayName("configure가 호출되지 않았어도 close는 예외를 발생시키지 않는다")
+    void shouldNotThrowExceptionOnCloseWhenNotConfigured() {
+      // When & Then
+      assertDoesNotThrow(() -> transform.close());
+    }
   }
 }

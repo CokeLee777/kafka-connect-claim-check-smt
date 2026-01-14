@@ -6,7 +6,7 @@ public interface ClaimCheckStorage {
 
   void configure(Map<String, ?> configs);
 
-  String store(String key, byte[] data);
+  String store(byte[] data);
 
   void close();
 }

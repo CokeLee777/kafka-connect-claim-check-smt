@@ -17,7 +17,6 @@ repositories {
 ext {
     kafkaVersion = '3.8.1'
     awsSdkVersion = '2.41.3'
-    jedisVersion = '7.2.0'
 
     junitVersion = '5.11.0'
     mockitoVersion = '5.21.0'
@@ -29,11 +28,10 @@ dependencies {
     compileOnly "org.apache.kafka:connect-api:${kafkaVersion}"
     compileOnly "org.apache.kafka:connect-transforms:${kafkaVersion}"
     compileOnly "org.apache.kafka:connect-json:${kafkaVersion}"
+    compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
 
     implementation "software.amazon.awssdk:s3:${awsSdkVersion}"
-    implementation "redis.clients:jedis:${jedisVersion}"
-
-    compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
+    implementation "software.amazon.awssdk:url-connection-client:${awsSdkVersion}"
 
     testImplementation platform("org.junit:junit-bom:${junitVersion}")
     testImplementation "org.junit.jupiter:junit-jupiter"
@@ -49,14 +47,52 @@ dependencies {
     testImplementation "org.apache.kafka:connect-api:${kafkaVersion}"
     testImplementation "org.apache.kafka:connect-transforms:${kafkaVersion}"
     testImplementation "org.apache.kafka:connect-json:${kafkaVersion}"
-    testImplementation "com.redis.testcontainers:testcontainers-redis-junit:1.6.4"
     testImplementation "org.slf4j:slf4j-simple:${slf4jVersion}"
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            srcDir 'src/integrationTest/java'
+        }
+        resources {
+            srcDir 'src/integrationTest/resources'
+        }
+        compileClasspath += main.output + test.output
+        runtimeClasspath += main.output + test.output
+    }
 }
 
 test {
     useJUnitPlatform()
-    // 테스트 시 불필요한 경고 숨기기 (Java 17+ 이슈 대응)
+
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
+task integrationTest(type: Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    useJUnitPlatform()
     jvmArgs '-XX:+EnableDynamicAgentLoading'
+
+    shouldRunAfter test
+
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
 shadowJar {
@@ -68,9 +104,7 @@ shadowJar {
         exclude(dependency("org.slf4j:.*"))
     }
 
-    // 충돌 방지를 위한 패키지 재배치 (Relocation) - 선택 사항이지만 권장
-    // 예: 내가 쓰는 Jedis 버전과 Kafka Connect가 내부적으로 쓰는 Jedis가 다를 경우를 대비
-    relocate 'redis.clients', 'com.github.cokelee777.shadow.redis.clients'
+    // 충돌 방지를 위한 패키지 재배치 (Relocation)
     relocate 'software.amazon.awssdk', 'com.github.cokelee777.shadow.awssdk'
 
     mergeServiceFiles()
