@@ -199,7 +199,7 @@ class S3StorageTest {
 
       private void assertPathPrefix(String input, String expected) {
         Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_S3_PATH_PREFIX, input);
+        configs.put(S3Storage.CONFIG_PATH_PREFIX, input);
         storage.configure(configs);
         assertEquals(expected, storage.getPathPrefix());
       }
@@ -276,7 +276,7 @@ class S3StorageTest {
       String bucket, String region, String endpoint, String prefix) {
     Map<String, String> configs = createConfigWithBucketAndRegion(bucket, region);
     configs.put(S3Storage.CONFIG_ENDPOINT_OVERRIDE, endpoint);
-    configs.put(S3Storage.CONFIG_S3_PATH_PREFIX, prefix);
+    configs.put(S3Storage.CONFIG_PATH_PREFIX, prefix);
     return configs;
   }
 
@@ -288,7 +288,7 @@ class S3StorageTest {
       // Given (setup for store tests)
       Map<String, String> configs = new HashMap<>();
       configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_BUCKET_NAME);
-      configs.put(S3Storage.CONFIG_S3_PATH_PREFIX, TEST_PATH_PREFIX);
+      configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_PATH_PREFIX);
       storage.configure(configs);
       try {
         Field clientField = S3Storage.class.getDeclaredField("s3Client");
