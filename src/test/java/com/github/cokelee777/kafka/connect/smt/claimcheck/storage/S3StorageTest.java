@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -252,6 +253,201 @@ class S3StorageTest {
         assertPathPrefix("/", "");
       }
     }
+
+    @Nested
+    @DisplayName("retry 설정 테스트")
+    class RetryConfigurationTests {
+
+      @Test
+      @DisplayName("retry 설정값이 없으면 기본값으로 설정된다")
+      void configureWithDefaultRetryValues() {
+        // Given
+        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+
+        // When
+        storage.configure(configs);
+
+        // Then
+        assertAll(
+            () -> assertEquals(3, storage.getRetryMax()),
+            () -> assertEquals(300L, storage.getRetryBackoffMs()),
+            () -> assertEquals(20_000L, storage.getRetryMaxBackoffMs()));
+      }
+
+      @Test
+      @DisplayName("retry 설정값을 커스텀 값으로 설정할 수 있다")
+      void configureWithCustomRetryValues() {
+        // Given
+        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_RETRY_MAX, "5");
+        configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "1000");
+        configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "30000");
+
+        // When
+        storage.configure(configs);
+
+        // Then
+        assertAll(
+            () -> assertEquals(5, storage.getRetryMax()),
+            () -> assertEquals(1000L, storage.getRetryBackoffMs()),
+            () -> assertEquals(30000L, storage.getRetryMaxBackoffMs()));
+      }
+
+      @Test
+      @DisplayName("retryMax를 0으로 설정할 수 있다")
+      void configureWithZeroRetryMax() {
+        // Given
+        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_RETRY_MAX, "0");
+
+        // When
+        storage.configure(configs);
+
+        // Then
+        assertEquals(0, storage.getRetryMax());
+      }
+
+      @Test
+      @DisplayName("retryBackoffMs를 0으로 설정하면 ConfigException이 발생한다")
+      void configureWithZeroRetryBackoffMsThrowsException() {
+        // Given
+        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "0");
+
+        // When
+        ConfigException exception =
+            assertThrows(ConfigException.class, () -> storage.configure(configs));
+
+        // Then
+        assertTrue(
+            exception.getMessage().contains("Invalid value 0 for configuration")
+                && exception.getMessage().contains("Value must be at least 1"));
+      }
+
+      @Test
+      @DisplayName("retryMaxBackoffMs를 0으로 설정하면 ConfigException이 발생한다")
+      void configureWithZeroRetryMaxBackoffMsThrowsException() {
+        // Given
+        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "0");
+
+        // When
+        ConfigException exception =
+            assertThrows(ConfigException.class, () -> storage.configure(configs));
+
+        // Then
+        assertTrue(
+            exception.getMessage().contains("Invalid value 0 for configuration")
+                && exception.getMessage().contains("Value must be at least 1"));
+      }
+
+      @Test
+      @DisplayName("retryMax가 음수이면 ConfigException이 발생한다")
+      void configureWithNegativeRetryMaxThrowsException() {
+        // Given
+        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_RETRY_MAX, "-1");
+
+        // When
+        ConfigException exception =
+            assertThrows(ConfigException.class, () -> storage.configure(configs));
+
+        // Then
+        assertTrue(
+            exception.getMessage().contains("Invalid value -1 for configuration")
+                && exception.getMessage().contains("Value must be at least 0"));
+      }
+
+      @Test
+      @DisplayName("retryBackoffMs가 음수이면 ConfigException이 발생한다")
+      void configureWithNegativeRetryBackoffMsThrowsException() {
+        // Given
+        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "-1");
+
+        // When
+        ConfigException exception =
+            assertThrows(ConfigException.class, () -> storage.configure(configs));
+
+        // Then
+        assertTrue(
+            exception.getMessage().contains("Invalid value -1 for configuration")
+                && exception.getMessage().contains("Value must be at least 1"));
+      }
+
+      @Test
+      @DisplayName("retryMaxBackoffMs가 음수이면 ConfigException이 발생한다")
+      void configureWithNegativeRetryMaxBackoffMsThrowsException() {
+        // Given
+        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "-1");
+
+        // When
+        ConfigException exception =
+            assertThrows(ConfigException.class, () -> storage.configure(configs));
+
+        // Then
+        assertTrue(
+            exception.getMessage().contains("Invalid value -1 for configuration")
+                && exception.getMessage().contains("Value must be at least 1"));
+      }
+
+      @Test
+      @DisplayName("configure 호출 시 retry 전략이 올바르게 초기화된다")
+      void configureInitializesRetryStrategyCorrectly() throws Exception {
+        // Given
+        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_RETRY_MAX, "5");
+        configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "1000");
+        configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "30000");
+
+        // When
+        storage.configure(configs);
+
+        // Then - configure가 예외 없이 완료되고 retry 설정값이 올바르게 저장되었는지 확인
+        assertAll(
+            () -> assertEquals(5, storage.getRetryMax()),
+            () -> assertEquals(1000L, storage.getRetryBackoffMs()),
+            () -> assertEquals(30000L, storage.getRetryMaxBackoffMs()));
+
+        // initRetryStrategy() 메서드가 올바르게 동작하는지 확인
+        Method initRetryStrategyMethod =
+            S3Storage.class.getDeclaredMethod("initRetryStrategy");
+        initRetryStrategyMethod.setAccessible(true);
+        Object retryStrategy = initRetryStrategyMethod.invoke(storage);
+
+        // StandardRetryStrategy 객체가 생성되었는지 확인
+        assertNotNull(retryStrategy);
+        // 실제 반환되는 클래스는 내부 구현 클래스이므로, 클래스 이름에 "StandardRetryStrategy"가 포함되는지 확인
+        assertTrue(
+            retryStrategy.getClass().getName().contains("StandardRetryStrategy"),
+            "Expected class name to contain 'StandardRetryStrategy', but was: "
+                + retryStrategy.getClass().getName());
+      }
+
+      @Test
+      @DisplayName("retryMax가 0일 때 retry 전략이 올바르게 초기화된다")
+      void configureWithZeroRetryMaxInitializesRetryStrategyCorrectly() throws Exception {
+        // Given
+        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_RETRY_MAX, "0");
+
+        // When
+        storage.configure(configs);
+
+        // Then
+        assertEquals(0, storage.getRetryMax());
+
+        // initRetryStrategy() 메서드가 올바르게 동작하는지 확인
+        Method initRetryStrategyMethod =
+            S3Storage.class.getDeclaredMethod("initRetryStrategy");
+        initRetryStrategyMethod.setAccessible(true);
+        Object retryStrategy = initRetryStrategyMethod.invoke(storage);
+
+        // StandardRetryStrategy 객체가 생성되었는지 확인
+        assertNotNull(retryStrategy);
+      }
+    }
   }
 
   private Map<String, String> createConfigWithBucket(String bucket) {
@@ -395,6 +591,68 @@ class S3StorageTest {
         assertTrue(exception.getMessage().contains(TEST_BUCKET_NAME));
         assertTrue(exception.getMessage().contains(generatedKey));
         assertEquals(s3Exception, exception.getCause());
+      }
+
+      @Test
+      @DisplayName("S3 업로드 실패 시 retry 설정에 따라 재시도가 시도된다")
+      void storeWhenS3UploadFailsRetriesAccordingToConfig() {
+        // Given
+        Map<String, String> configs = new HashMap<>();
+        configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_PATH_PREFIX);
+        configs.put(S3Storage.CONFIG_RETRY_MAX, "2"); // retryMax=2면 최대 3번 시도
+        storage.configure(configs);
+        try {
+          Field clientField = S3Storage.class.getDeclaredField("s3Client");
+          clientField.setAccessible(true);
+          clientField.set(storage, s3Client);
+        } catch (Exception e) {
+          fail("Test setup failed for S3Client injection");
+        }
+
+        byte[] data = "test-data".getBytes();
+        RuntimeException s3Exception = new RuntimeException("S3 connection failed");
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+            .thenThrow(s3Exception);
+
+        // When
+        assertThrows(RuntimeException.class, () -> storage.store(data));
+
+        // Then
+        verify(s3Client, atLeastOnce())
+            .putObject(any(PutObjectRequest.class), any(RequestBody.class));
+      }
+
+      @Test
+      @DisplayName("retryMax가 0일 때 S3 업로드 실패 시 재시도 없이 즉시 실패한다")
+      void storeWhenS3UploadFailsWithZeroRetryMaxFailsImmediately() {
+        // Given
+        Map<String, String> configs = new HashMap<>();
+        configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_PATH_PREFIX);
+        configs.put(S3Storage.CONFIG_RETRY_MAX, "0"); // retryMax=0이면 재시도 없음
+        storage.configure(configs);
+        try {
+          Field clientField = S3Storage.class.getDeclaredField("s3Client");
+          clientField.setAccessible(true);
+          clientField.set(storage, s3Client);
+        } catch (Exception e) {
+          fail("Test setup failed for S3Client injection");
+        }
+
+        byte[] data = "test-data".getBytes();
+        RuntimeException s3Exception = new RuntimeException("S3 connection failed");
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+            .thenThrow(s3Exception);
+
+        // When
+        RuntimeException exception =
+            assertThrows(RuntimeException.class, () -> storage.store(data));
+
+        // Then
+        verify(s3Client, atLeastOnce())
+            .putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        assertTrue(exception.getMessage().contains("Failed to upload to S3"));
       }
 
       @Test
