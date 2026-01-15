@@ -67,14 +67,14 @@ public class S3Storage implements ClaimCheckStorage {
               CONFIG_RETRY_BACKOFF_MS,
               ConfigDef.Type.LONG,
               300L,
-              ConfigDef.Range.atLeast(0L),
+              ConfigDef.Range.atLeast(1L),
               ConfigDef.Importance.LOW,
               "Initial backoff time in milliseconds between S3 upload retries.")
           .define(
               CONFIG_RETRY_MAX_BACKOFF_MS,
               ConfigDef.Type.LONG,
               20_000L,
-              ConfigDef.Range.atLeast(0L),
+              ConfigDef.Range.atLeast(1L),
               ConfigDef.Importance.LOW,
               "Maximum backoff time in milliseconds for S3 upload retries.");
   ;
