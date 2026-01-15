@@ -50,8 +50,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
-          review_simple_changes: false
-          review_comment_lgtm: false
+          bot_icon: true
+          review_comment_lgtm: true
           path_filters: |
             **/*.java
             **/*.kt
@@ -64,5 +64,3 @@ jobs:
             **/*.yaml
             **/*.json
           language: java
-          review_status_comment: true
-          max_patch_length: 100000
