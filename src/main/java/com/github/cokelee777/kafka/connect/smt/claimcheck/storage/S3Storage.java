@@ -135,23 +135,25 @@ public class S3Storage implements ClaimCheckStorage {
     this.retryBackoffMs = config.getLong(CONFIG_RETRY_BACKOFF_MS);
     this.retryMaxBackoffMs = config.getLong(CONFIG_RETRY_MAX_BACKOFF_MS);
 
-    StandardRetryStrategy retryStrategy = initRetryStrategy();
+    if (this.s3Client == null) {
+      StandardRetryStrategy retryStrategy = initRetryStrategy();
 
-    S3ClientBuilder builder =
-        S3Client.builder()
-            .httpClient(UrlConnectionHttpClient.builder().build())
-            .credentialsProvider(DefaultCredentialsProvider.builder().build())
-            .overrideConfiguration(
-                ClientOverrideConfiguration.builder().retryStrategy(retryStrategy).build());
+      S3ClientBuilder builder =
+          S3Client.builder()
+              .httpClient(UrlConnectionHttpClient.builder().build())
+              .credentialsProvider(DefaultCredentialsProvider.builder().build())
+              .overrideConfiguration(
+                  ClientOverrideConfiguration.builder().retryStrategy(retryStrategy).build());
 
-    builder.region(Region.of(this.region));
+      builder.region(Region.of(this.region));
 
-    if (this.endpointOverride != null) {
-      builder.endpointOverride(URI.create(this.endpointOverride));
-      builder.forcePathStyle(true);
+      if (this.endpointOverride != null) {
+        builder.endpointOverride(URI.create(this.endpointOverride));
+        builder.forcePathStyle(true);
+      }
+
+      this.s3Client = builder.build();
     }
-
-    this.s3Client = builder.build();
   }
 
   private StandardRetryStrategy initRetryStrategy() {
