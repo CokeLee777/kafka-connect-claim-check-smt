@@ -1,10 +1,5 @@
 language: ko-KR
 reviews:
-  auto_review:
-    enabled: true
-    branches:
-      - develop
-      - release-*
   request_changes_workflow: true
   high_level_summary_in_walkthrough: true
   fail_commit_status: true
