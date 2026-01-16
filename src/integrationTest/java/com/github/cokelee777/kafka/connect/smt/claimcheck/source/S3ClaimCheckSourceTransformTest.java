@@ -31,7 +31,7 @@ class S3ClaimCheckSourceTransformTest {
 
   private static final DockerImageName LOCALSTACK_IMAGE =
       DockerImageName.parse("localstack/localstack:3.2.0");
-  private static final String BUCKET_NAME = "test-bucket-" + UUID.randomUUID();
+  private static final String BUCKET_NAME = "test-bucket";
 
   @Container
   private static final LocalStackContainer localstack =
