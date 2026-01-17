@@ -20,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.retries.StandardRetryStrategy;
 import software.amazon.awssdk.services.s3.S3Client;
 // S3ClientBuilder import 추가
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -411,8 +412,7 @@ class S3StorageTest {
             () -> assertEquals(30000L, storage.getRetryMaxBackoffMs()));
 
         // initRetryStrategy() 메서드가 올바르게 동작하는지 확인
-        Method initRetryStrategyMethod =
-            S3Storage.class.getDeclaredMethod("initRetryStrategy");
+        Method initRetryStrategyMethod = S3Storage.class.getDeclaredMethod("initRetryStrategy");
         initRetryStrategyMethod.setAccessible(true);
         Object retryStrategy = initRetryStrategyMethod.invoke(storage);
 
@@ -420,7 +420,7 @@ class S3StorageTest {
         assertNotNull(retryStrategy);
         // 실제 반환되는 클래스는 내부 구현 클래스이므로, 클래스 이름에 "StandardRetryStrategy"가 포함되는지 확인
         assertTrue(
-            retryStrategy.getClass().getName().contains("StandardRetryStrategy"),
+            retryStrategy instanceof StandardRetryStrategy,
             "Expected class name to contain 'StandardRetryStrategy', but was: "
                 + retryStrategy.getClass().getName());
       }
@@ -439,8 +439,7 @@ class S3StorageTest {
         assertEquals(0, storage.getRetryMax());
 
         // initRetryStrategy() 메서드가 올바르게 동작하는지 확인
-        Method initRetryStrategyMethod =
-            S3Storage.class.getDeclaredMethod("initRetryStrategy");
+        Method initRetryStrategyMethod = S3Storage.class.getDeclaredMethod("initRetryStrategy");
         initRetryStrategyMethod.setAccessible(true);
         Object retryStrategy = initRetryStrategyMethod.invoke(storage);
 
@@ -619,8 +618,7 @@ class S3StorageTest {
         assertThrows(RuntimeException.class, () -> storage.store(data));
 
         // Then
-        verify(s3Client, times(1))
-            .putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
       }
 
       @Test
@@ -650,8 +648,7 @@ class S3StorageTest {
             assertThrows(RuntimeException.class, () -> storage.store(data));
 
         // Then
-        verify(s3Client, times(1))
-            .putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
         assertTrue(exception.getMessage().contains("Failed to upload to S3"));
       }
 

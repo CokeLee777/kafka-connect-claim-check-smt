@@ -5,7 +5,7 @@ reviews:
     base_branches:
       - develop
       - release-*
-      - '!main'
+      - '^(?!main$).*'
   request_changes_workflow: true
   high_level_summary_in_walkthrough: true
   fail_commit_status: true
