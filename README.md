@@ -9,22 +9,22 @@ collection of reusable SMTs designed to enhance data processing capabilities wit
 
 - **Java 11** - Target and source compatibility
 - **Kafka Connect API 3.8.1** - Core framework for building connectors and SMTs
-- **Gradle 8.x** - Build automation with Shadow plugin for uber JAR packaging
+- **Gradle 8.11** - Build automation with Shadow plugin for uber JAR packaging
 
 ### Runtime Dependencies
 
-- **AWS SDK for Java 2.41.3** - Amazon S3 client for cloud storage integration
+- **AWS SDK for Java 2.41.8** - Amazon S3 client for cloud storage integration
 - **SLF4J 2.0.17** - Logging facade (provided by Kafka Connect runtime)
 
 ### Testing Framework
 
-- **JUnit 5.11.0** - Unit testing framework
+- **JUnit 5.14.2** - Unit testing framework
 - **Mockito 5.21.0** - Mocking framework for unit tests
 - **Testcontainers 1.21.4** - Integration testing with LocalStack (S3) and Redis
 
 ### Build Plugins
 
-- **Shadow JAR Plugin 8.1.1** - Creates uber JAR with relocated dependencies to avoid classpath conflicts
+- **Shadow JAR Plugin 9.0.0** - Creates uber JAR with relocated dependencies to avoid classpath conflicts
 
 ## Features
 
