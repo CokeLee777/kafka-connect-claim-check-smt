@@ -140,15 +140,18 @@ class S3StorageIntegrationTest {
       Map<String, String> config = createS3Config();
       config.put(S3Storage.CONFIG_RETRY_MAX, "1");
       config.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "100");
+      config.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "1000");
 
+      BackoffStrategy backoffStrategy =
+          BackoffStrategy.exponentialDelay(
+              Duration.ofMillis(Long.parseLong(config.get(S3Storage.CONFIG_RETRY_BACKOFF_MS))),
+              Duration.ofMillis(Long.parseLong(config.get(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS))));
       StandardRetryStrategy retryStrategy =
           StandardRetryStrategy.builder()
               .maxAttempts(Integer.parseInt(config.get(S3Storage.CONFIG_RETRY_MAX)) + 1)
-              .backoffStrategy(
-                  BackoffStrategy.exponentialDelay(
-                      Duration.ofMillis(
-                          Long.parseLong(config.get(S3Storage.CONFIG_RETRY_BACKOFF_MS))),
-                      Duration.ofSeconds(1)))
+              .backoffStrategy(backoffStrategy)
+              .throttlingBackoffStrategy(backoffStrategy)
+              .circuitBreakerEnabled(false)
               .build();
 
       try (S3Client customS3Client =
