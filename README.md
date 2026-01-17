@@ -100,7 +100,7 @@ This means:
 To use the ClaimCheck SMT, you'll need to configure it in your Kafka Connect connector. Below is an example
 configuration snippet for a source connector, demonstrating how to apply the `ClaimCheckSourceTransform`.
 
-```json
+```jsonc
 {
   "name": "my-source-connector",
   "config": {
@@ -109,14 +109,14 @@ configuration snippet for a source connector, demonstrating how to apply the `Cl
     "topic.prefix": "my-prefix-",
     "transforms": "claimcheck",
     "transforms.claimcheck.type": "com.github.cokelee777.kafka.connect.smt.claimcheck.source.ClaimCheckSourceTransform",
-    "transforms.claimcheck.threshold.bytes": 1048576,
+    "transforms.claimcheck.threshold.bytes": "1048576",
     "transforms.claimcheck.storage.type": "S3",
     "transforms.claimcheck.storage.s3.bucket.name": "your-s3-bucket-name",
     "transforms.claimcheck.storage.s3.region": "your-aws-region",
     "transforms.claimcheck.storage.s3.path.prefix": "your-s3/prefix/path",
-    "transforms.claimcheck.storage.s3.retry.max": 3,
-    "transforms.claimcheck.storage.s3.retry.backoff.ms": 300,
-    "transforms.claimcheck.storage.s3.retry.max.backoff.ms": 20000
+    "transforms.claimcheck.storage.s3.retry.max": "3",
+    "transforms.claimcheck.storage.s3.retry.backoff.ms": "300",
+    "transforms.claimcheck.storage.s3.retry.max.backoff.ms": "20000"
     // ... other connector configurations
   }
 }
