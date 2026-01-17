@@ -136,59 +136,59 @@ class S3StorageIntegrationTest {
   @DisplayName("네트워크 오류로 S3 업로드 실패 시, 재시도하여 성공한다")
   void shouldRetryAndSucceedOnHttpFailure() throws IOException {
     // Given: A custom HttpClient that fails once
-    FailingHttpClient failingHttpClient = new FailingHttpClient(1);
+    try (FailingHttpClient failingHttpClient = new FailingHttpClient(1)) {
+      // Given: Retry configuration
+      Map<String, String> config = createS3Config();
+      config.put(S3Storage.CONFIG_RETRY_MAX, "1");
+      config.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "100");
 
-    // Given: Retry configuration
-    Map<String, String> config = createS3Config();
-    config.put(S3Storage.CONFIG_RETRY_MAX, "1");
-    config.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "100");
+      // Given: A real S3 client with a retry strategy and the failing http client
+      StandardRetryStrategy retryStrategy =
+          StandardRetryStrategy.builder()
+              .maxAttempts(Integer.parseInt(config.get(S3Storage.CONFIG_RETRY_MAX)) + 1)
+              .backoffStrategy(
+                  BackoffStrategy.exponentialDelay(
+                      Duration.ofMillis(
+                          Long.parseLong(config.get(S3Storage.CONFIG_RETRY_BACKOFF_MS))),
+                      Duration.ofSeconds(1)))
+              .build();
 
-    // Given: A real S3 client with a retry strategy and the failing http client
-    StandardRetryStrategy retryStrategy =
-        StandardRetryStrategy.builder()
-            .maxAttempts(Integer.parseInt(config.get(S3Storage.CONFIG_RETRY_MAX)) + 1)
-            .backoffStrategy(
-                BackoffStrategy.exponentialDelay(
-                    Duration.ofMillis(
-                        Long.parseLong(config.get(S3Storage.CONFIG_RETRY_BACKOFF_MS))),
-                    Duration.ofSeconds(1)))
-            .build();
+      try (S3Client customS3Client =
+          S3Client.builder()
+              .httpClient(failingHttpClient) // Inject the failing client
+              .endpointOverride(URI.create(config.get(S3Storage.CONFIG_ENDPOINT_OVERRIDE)))
+              .credentialsProvider(
+                  StaticCredentialsProvider.create(
+                      AwsBasicCredentials.create(
+                          config.get("storage.s3.credentials.access.key.id"),
+                          config.get("storage.s3.credentials.secret.access.key"))))
+              .region(Region.of(config.get(S3Storage.CONFIG_REGION)))
+              .overrideConfiguration(
+                  ClientOverrideConfiguration.builder().retryStrategy(retryStrategy).build())
+              .forcePathStyle(true)
+              .build()) {
+        // Given: S3Storage injected with the custom client
+        storage = new S3Storage(customS3Client);
+        storage.configure(config);
+        byte[] data = "hello retry".getBytes(StandardCharsets.UTF_8);
 
-    S3Client customS3Client =
-        S3Client.builder()
-            .httpClient(failingHttpClient) // Inject the failing client
-            .endpointOverride(URI.create(config.get(S3Storage.CONFIG_ENDPOINT_OVERRIDE)))
-            .credentialsProvider(
-                StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(
-                        config.get("storage.s3.credentials.access.key.id"),
-                        config.get("storage.s3.credentials.secret.access.key"))))
-            .region(Region.of(config.get(S3Storage.CONFIG_REGION)))
-            .overrideConfiguration(
-                ClientOverrideConfiguration.builder().retryStrategy(retryStrategy).build())
-            .forcePathStyle(true)
-            .build();
+        // When
+        String s3uri = storage.store(data);
 
-    // Given: S3Storage injected with the custom client
-    storage = new S3Storage(customS3Client);
-    storage.configure(config);
-    byte[] data = "hello retry".getBytes(StandardCharsets.UTF_8);
+        // Then: The upload eventually succeeded
+        assertNotNull(s3uri);
+        assertTrue(s3uri.startsWith("s3://" + BUCKET_NAME + "/"));
+        assertEquals(2, failingHttpClient.callCount.get());
 
-    // When
-    String s3uri = storage.store(data);
-
-    // Then: The upload eventually succeeded
-    assertNotNull(s3uri);
-    assertTrue(s3uri.startsWith("s3://" + BUCKET_NAME + "/"));
-    assertEquals(2, failingHttpClient.callCount.get());
-
-    // Then: The object is actually in S3
-    String key = s3uri.substring(("s3://" + BUCKET_NAME + "/").length());
-    byte[] storedData =
-        s3Client
-            .getObject(GetObjectRequest.builder().bucket(BUCKET_NAME).key(key).build())
-            .readAllBytes();
-    assertArrayEquals(data, storedData);
+        // Then: The object is actually in S3
+        String key = s3uri.substring(("s3://" + BUCKET_NAME + "/").length());
+        byte[] storedData =
+            s3Client
+                .getObject(GetObjectRequest.builder().bucket(BUCKET_NAME).key(key).build())
+                .readAllBytes();
+        assertArrayEquals(data, storedData);
+      }
+    }
   }
 
   @Test
