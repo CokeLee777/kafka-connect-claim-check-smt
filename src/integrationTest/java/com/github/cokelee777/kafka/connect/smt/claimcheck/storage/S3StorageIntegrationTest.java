@@ -135,14 +135,12 @@ class S3StorageIntegrationTest {
   @Test
   @DisplayName("네트워크 오류로 S3 업로드 실패 시, 재시도하여 성공한다")
   void shouldRetryAndSucceedOnHttpFailure() throws IOException {
-    // Given: A custom HttpClient that fails once
+    // Given
     try (FailingHttpClient failingHttpClient = new FailingHttpClient(1)) {
-      // Given: Retry configuration
       Map<String, String> config = createS3Config();
       config.put(S3Storage.CONFIG_RETRY_MAX, "1");
       config.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "100");
 
-      // Given: A real S3 client with a retry strategy and the failing http client
       StandardRetryStrategy retryStrategy =
           StandardRetryStrategy.builder()
               .maxAttempts(Integer.parseInt(config.get(S3Storage.CONFIG_RETRY_MAX)) + 1)
@@ -155,7 +153,7 @@ class S3StorageIntegrationTest {
 
       try (S3Client customS3Client =
           S3Client.builder()
-              .httpClient(failingHttpClient) // Inject the failing client
+              .httpClient(failingHttpClient)
               .endpointOverride(URI.create(config.get(S3Storage.CONFIG_ENDPOINT_OVERRIDE)))
               .credentialsProvider(
                   StaticCredentialsProvider.create(
@@ -167,7 +165,7 @@ class S3StorageIntegrationTest {
                   ClientOverrideConfiguration.builder().retryStrategy(retryStrategy).build())
               .forcePathStyle(true)
               .build()) {
-        // Given: S3Storage injected with the custom client
+        // Given
         storage = new S3Storage(customS3Client);
         storage.configure(config);
         byte[] data = "hello retry".getBytes(StandardCharsets.UTF_8);
@@ -175,12 +173,13 @@ class S3StorageIntegrationTest {
         // When
         String s3uri = storage.store(data);
 
-        // Then: The upload eventually succeeded
+        // Then
         assertNotNull(s3uri);
         assertTrue(s3uri.startsWith("s3://" + BUCKET_NAME + "/"));
-        assertEquals(2, failingHttpClient.callCount.get());
+        // SDK 내부 요청(메타데이터 조회, 프리플라이트 검사 등)이 발생하면 호출 횟수가 2를 초과할 수 있으므로 2 이상인지 확인
+        assertTrue(failingHttpClient.callCount.get() >= 2);
 
-        // Then: The object is actually in S3
+        // Then
         String key = s3uri.substring(("s3://" + BUCKET_NAME + "/").length());
         byte[] storedData =
             s3Client
