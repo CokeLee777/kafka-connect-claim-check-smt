@@ -594,8 +594,8 @@ class S3StorageTest {
       }
 
       @Test
-      @DisplayName("S3 업로드 실패 시 retry 설정에 따라 재시도가 시도된다")
-      void storeWhenS3UploadFailsRetriesAccordingToConfig() {
+      @DisplayName("S3 업로드 실패 시 store()는 1회 호출 후 예외를 반환한다")
+      void storeWhenS3UploadFailsThrowsAfterSingleCall() {
         // Given
         Map<String, String> configs = new HashMap<>();
         configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_BUCKET_NAME);
@@ -619,7 +619,7 @@ class S3StorageTest {
         assertThrows(RuntimeException.class, () -> storage.store(data));
 
         // Then
-        verify(s3Client, atLeastOnce())
+        verify(s3Client, times(1))
             .putObject(any(PutObjectRequest.class), any(RequestBody.class));
       }
 
@@ -650,7 +650,7 @@ class S3StorageTest {
             assertThrows(RuntimeException.class, () -> storage.store(data));
 
         // Then
-        verify(s3Client, atLeastOnce())
+        verify(s3Client, times(1))
             .putObject(any(PutObjectRequest.class), any(RequestBody.class));
         assertTrue(exception.getMessage().contains("Failed to upload to S3"));
       }
