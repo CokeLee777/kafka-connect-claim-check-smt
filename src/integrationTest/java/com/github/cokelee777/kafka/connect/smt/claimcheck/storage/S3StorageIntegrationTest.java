@@ -2,6 +2,10 @@ package com.github.cokelee777.kafka.connect.smt.claimcheck.storage;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.retry.RetryConfig;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.retry.RetryStrategyFactory;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3.S3RetryConfigAdapter;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3.S3Storage;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -9,15 +13,13 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.http.ExecutableHttpRequest;
@@ -27,7 +29,6 @@ import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.retries.StandardRetryStrategy;
-import software.amazon.awssdk.retries.api.BackoffStrategy;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 
@@ -37,11 +38,19 @@ class S3StorageIntegrationTest {
 
   private static final DockerImageName LOCALSTACK_IMAGE =
       DockerImageName.parse("localstack/localstack:3.2.0");
-  private static final String BUCKET_NAME = "test-bucket";
 
   @Container
   private static final LocalStackContainer localstack =
       new LocalStackContainer(LOCALSTACK_IMAGE).withServices(LocalStackContainer.Service.S3);
+
+  private static final String TEST_CONFIG_BUCKET_NAME = "test-bucket";
+  private static final String TEST_CONFIG_RETRY_MAX = "5";
+  private static final String TEST_CONFIG_RETRY_BACKOFF_MS = "100";
+  private static final String TEST_CONFIG_RETRY_MAX_BACKOFF_MS = "1000";
+  private static final String TEST_LARGE_PAYLOAD = "this is large payload !!!";
+  private static final int TEST_RETRY_MAX = 5;
+  private static final long TEST_RETRY_BACKOFF_MS = 100L;
+  private static final long TEST_RETRY_MAX_BACKOFF_MS = 1000L;
 
   private static S3Client s3Client;
   private S3Storage storage;
@@ -57,7 +66,7 @@ class S3StorageIntegrationTest {
                         localstack.getAccessKey(), localstack.getSecretKey())))
             .region(Region.of(localstack.getRegion()))
             .build();
-    s3Client.createBucket(builder -> builder.bucket(BUCKET_NAME));
+    s3Client.createBucket(builder -> builder.bucket(TEST_CONFIG_BUCKET_NAME));
   }
 
   @AfterAll
@@ -65,16 +74,25 @@ class S3StorageIntegrationTest {
     s3Client.close();
   }
 
-  private Map<String, String> createS3Config() {
-    Map<String, String> config = new HashMap<>();
-    config.put(S3Storage.CONFIG_BUCKET_NAME, BUCKET_NAME);
-    config.put(S3Storage.CONFIG_REGION, localstack.getRegion());
-    config.put(
+  @BeforeEach
+  void setUp() {
+    storage = new S3Storage();
+  }
+
+  private Map<String, String> createS3StorageConfig() {
+    return Map.of(
+        S3Storage.CONFIG_BUCKET_NAME,
+        TEST_CONFIG_BUCKET_NAME,
+        S3Storage.CONFIG_REGION,
+        localstack.getRegion(),
         S3Storage.CONFIG_ENDPOINT_OVERRIDE,
-        localstack.getEndpointOverride(LocalStackContainer.Service.S3).toString());
-    config.put("storage.s3.credentials.access.key.id", localstack.getAccessKey());
-    config.put("storage.s3.credentials.secret.access.key", localstack.getSecretKey());
-    return config;
+        localstack.getEndpointOverride(LocalStackContainer.Service.S3).toString(),
+        S3Storage.CONFIG_RETRY_MAX,
+        TEST_CONFIG_RETRY_MAX,
+        S3Storage.CONFIG_RETRY_BACKOFF_MS,
+        TEST_CONFIG_RETRY_BACKOFF_MS,
+        S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS,
+        TEST_CONFIG_RETRY_MAX_BACKOFF_MS);
   }
 
   private static class FailingHttpClient implements SdkHttpClient {
@@ -109,27 +127,25 @@ class S3StorageIntegrationTest {
   }
 
   @Test
-  @DisplayName("configure와 store를 통해 S3에 객체를 정상적으로 업로드하고 URI를 반환한다")
-  void shouldStoreObjectInS3AndReturnURI() throws IOException {
+  @DisplayName("configure와 store를 통해 S3에 객체를 정상적으로 업로드하고 referenceUrl을 반환한다")
+  void shouldStoreObjectInS3AndReturnReferenceUrl() throws IOException {
     // Given
-    storage = new S3Storage();
-    Map<String, String> config = createS3Config();
-    storage.configure(config);
-    byte[] data = "hello world".getBytes(StandardCharsets.UTF_8);
+    storage.configure(createS3StorageConfig());
+    byte[] payload = TEST_LARGE_PAYLOAD.getBytes(StandardCharsets.UTF_8);
 
     // When
-    String s3uri = storage.store(data);
+    String referenceUrl = storage.store(payload);
 
     // Then
-    assertNotNull(s3uri);
-    assertTrue(s3uri.startsWith("s3://" + BUCKET_NAME + "/"));
+    assertNotNull(referenceUrl);
+    assertTrue(referenceUrl.startsWith("s3://" + TEST_CONFIG_BUCKET_NAME));
 
-    String key = s3uri.substring(("s3://" + BUCKET_NAME + "/").length());
-    byte[] storedData =
+    String key = referenceUrl.substring(("s3://" + TEST_CONFIG_BUCKET_NAME + "/").length());
+    byte[] retrievedPayload =
         s3Client
-            .getObject(GetObjectRequest.builder().bucket(BUCKET_NAME).key(key).build())
+            .getObject(GetObjectRequest.builder().bucket(TEST_CONFIG_BUCKET_NAME).key(key).build())
             .readAllBytes();
-    assertArrayEquals(data, storedData);
+    assertArrayEquals(payload, retrievedPayload);
   }
 
   @Test
@@ -137,58 +153,49 @@ class S3StorageIntegrationTest {
   void shouldRetryAndSucceedOnHttpFailure() throws IOException {
     // Given
     try (FailingHttpClient failingHttpClient = new FailingHttpClient(1)) {
-      Map<String, String> config = createS3Config();
-      config.put(S3Storage.CONFIG_RETRY_MAX, "1");
-      config.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "100");
-      config.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "1000");
+      Map<String, String> configs = new HashMap<>(createS3StorageConfig());
 
-      BackoffStrategy backoffStrategy =
-          BackoffStrategy.exponentialDelay(
-              Duration.ofMillis(Long.parseLong(config.get(S3Storage.CONFIG_RETRY_BACKOFF_MS))),
-              Duration.ofMillis(Long.parseLong(config.get(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS))));
-      StandardRetryStrategy retryStrategy =
-          StandardRetryStrategy.builder()
-              .maxAttempts(Integer.parseInt(config.get(S3Storage.CONFIG_RETRY_MAX)) + 1)
-              .backoffStrategy(backoffStrategy)
-              .throttlingBackoffStrategy(backoffStrategy)
-              .circuitBreakerEnabled(false)
-              .build();
+      RetryConfig retryConfig =
+          new RetryConfig(
+              TEST_RETRY_MAX + 1,
+              Duration.ofMillis(TEST_RETRY_BACKOFF_MS),
+              Duration.ofMillis(TEST_RETRY_MAX_BACKOFF_MS));
+
+      RetryStrategyFactory<StandardRetryStrategy> retryStrategyFactory = new S3RetryConfigAdapter();
+      StandardRetryStrategy retryStrategy = retryStrategyFactory.create(retryConfig);
 
       try (S3Client customS3Client =
           S3Client.builder()
               .httpClient(failingHttpClient)
-              .endpointOverride(URI.create(config.get(S3Storage.CONFIG_ENDPOINT_OVERRIDE)))
-              .credentialsProvider(
-                  StaticCredentialsProvider.create(
-                      AwsBasicCredentials.create(
-                          config.get("storage.s3.credentials.access.key.id"),
-                          config.get("storage.s3.credentials.secret.access.key"))))
-              .region(Region.of(config.get(S3Storage.CONFIG_REGION)))
+              .endpointOverride(URI.create(configs.get(S3Storage.CONFIG_ENDPOINT_OVERRIDE)))
+              .credentialsProvider(DefaultCredentialsProvider.builder().build())
+              .region(Region.of(configs.get(S3Storage.CONFIG_REGION)))
               .overrideConfiguration(
                   ClientOverrideConfiguration.builder().retryStrategy(retryStrategy).build())
               .forcePathStyle(true)
               .build()) {
-        // Given
-        storage = new S3Storage(customS3Client);
-        storage.configure(config);
-        byte[] data = "hello retry".getBytes(StandardCharsets.UTF_8);
+
+        storage = new S3Storage(customS3Client, retryStrategyFactory);
+        storage.configure(configs);
+        byte[] data = TEST_LARGE_PAYLOAD.getBytes(StandardCharsets.UTF_8);
 
         // When
-        String s3uri = storage.store(data);
+        String referenceUrl = storage.store(data);
 
         // Then
-        assertNotNull(s3uri);
-        assertTrue(s3uri.startsWith("s3://" + BUCKET_NAME + "/"));
+        assertNotNull(referenceUrl);
+        assertTrue(referenceUrl.startsWith("s3://" + TEST_CONFIG_BUCKET_NAME));
+
         // SDK 내부 요청(메타데이터 조회, 프리플라이트 검사 등)이 발생하면 호출 횟수가 2를 초과할 수 있으므로 2 이상인지 확인
         assertTrue(failingHttpClient.callCount.get() >= 2);
 
-        // Then
-        String key = s3uri.substring(("s3://" + BUCKET_NAME + "/").length());
-        byte[] storedData =
+        String key = referenceUrl.substring(("s3://" + TEST_CONFIG_BUCKET_NAME + "/").length());
+        byte[] retrievedPayload =
             s3Client
-                .getObject(GetObjectRequest.builder().bucket(BUCKET_NAME).key(key).build())
+                .getObject(
+                    GetObjectRequest.builder().bucket(TEST_CONFIG_BUCKET_NAME).key(key).build())
                 .readAllBytes();
-        assertArrayEquals(data, storedData);
+        assertArrayEquals(data, retrievedPayload);
       }
     }
   }
@@ -197,8 +204,7 @@ class S3StorageIntegrationTest {
   @DisplayName("close 메서드가 S3 클라이언트를 정상적으로 닫는다")
   void shouldCloseS3Client() {
     // Given
-    storage = new S3Storage();
-    storage.configure(createS3Config());
+    storage.configure(createS3StorageConfig());
 
     // When & Then
     assertDoesNotThrow(() -> storage.close());
