@@ -1,5 +1,9 @@
-package com.github.cokelee777.kafka.connect.smt.claimcheck.storage;
+package com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3;
 
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorage;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.StorageType;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.retry.RetryConfig;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.retry.RetryStrategyFactory;
 import com.github.cokelee777.kafka.connect.smt.utils.ConfigUtils;
 import java.net.URI;
 import java.time.Duration;
@@ -13,7 +17,6 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.retries.StandardRetryStrategy;
-import software.amazon.awssdk.retries.api.BackoffStrategy;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -78,6 +81,9 @@ public class S3Storage implements ClaimCheckStorage {
               ConfigDef.Importance.LOW,
               "Maximum backoff time in milliseconds for S3 upload retries.");
 
+  private RetryStrategyFactory<StandardRetryStrategy> retryStrategyFactory =
+          new S3RetryConfigAdapter();
+
   private String bucketName;
   private String region;
   private String pathPrefix;
@@ -90,8 +96,9 @@ public class S3Storage implements ClaimCheckStorage {
 
   public S3Storage() {}
 
-  public S3Storage(S3Client s3Client) {
+  public S3Storage(S3Client s3Client, RetryStrategyFactory<StandardRetryStrategy> retryStrategyFactory) {
     this.s3Client = s3Client;
+    this.retryStrategyFactory = retryStrategyFactory;
   }
 
   public String getBucketName() {
@@ -139,38 +146,30 @@ public class S3Storage implements ClaimCheckStorage {
     this.retryBackoffMs = config.getLong(CONFIG_RETRY_BACKOFF_MS);
     this.retryMaxBackoffMs = config.getLong(CONFIG_RETRY_MAX_BACKOFF_MS);
 
-    if (this.s3Client == null) {
-      StandardRetryStrategy retryStrategy = initRetryStrategy();
-
-      S3ClientBuilder builder =
-          S3Client.builder()
-              .httpClient(UrlConnectionHttpClient.builder().build())
-              .credentialsProvider(DefaultCredentialsProvider.builder().build())
-              .overrideConfiguration(
-                  ClientOverrideConfiguration.builder().retryStrategy(retryStrategy).build());
-
-      builder.region(Region.of(this.region));
-
-      if (this.endpointOverride != null) {
-        builder.endpointOverride(URI.create(this.endpointOverride));
-        builder.forcePathStyle(true);
-      }
-
-      this.s3Client = builder.build();
+    if (this.s3Client != null) {
+      return;
     }
-  }
 
-  private StandardRetryStrategy initRetryStrategy() {
-    BackoffStrategy backoffStrategy =
-        BackoffStrategy.exponentialDelay(
-            Duration.ofMillis(this.retryBackoffMs), Duration.ofMillis(this.retryMaxBackoffMs));
+    RetryConfig retryConfig =
+        new RetryConfig(
+            retryMax + 1, Duration.ofMillis(this.retryBackoffMs), Duration.ofMillis(this.retryMaxBackoffMs));
+    StandardRetryStrategy retryStrategy = this.retryStrategyFactory.create(retryConfig);
 
-    return StandardRetryStrategy.builder()
-        .maxAttempts(this.retryMax + 1)
-        .backoffStrategy(backoffStrategy)
-        .throttlingBackoffStrategy(backoffStrategy)
-        .circuitBreakerEnabled(false)
-        .build();
+    S3ClientBuilder builder =
+        S3Client.builder()
+            .httpClient(UrlConnectionHttpClient.builder().build())
+            .credentialsProvider(DefaultCredentialsProvider.builder().build())
+            .overrideConfiguration(
+                ClientOverrideConfiguration.builder().retryStrategy(retryStrategy).build());
+
+    builder.region(Region.of(this.region));
+
+    if (this.endpointOverride != null) {
+      builder.endpointOverride(URI.create(this.endpointOverride));
+      builder.forcePathStyle(true);
+    }
+
+    this.s3Client = builder.build();
   }
 
   @Override
