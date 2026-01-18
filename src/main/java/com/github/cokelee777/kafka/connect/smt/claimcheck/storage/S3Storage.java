@@ -77,7 +77,6 @@ public class S3Storage implements ClaimCheckStorage {
               ConfigDef.Range.atLeast(1L),
               ConfigDef.Importance.LOW,
               "Maximum backoff time in milliseconds for S3 upload retries.");
-  ;
 
   private String bucketName;
   private String region;
@@ -121,6 +120,11 @@ public class S3Storage implements ClaimCheckStorage {
 
   public long getRetryMaxBackoffMs() {
     return retryMaxBackoffMs;
+  }
+
+  @Override
+  public String type() {
+    return StorageType.S3.type();
   }
 
   @Override
@@ -170,7 +174,7 @@ public class S3Storage implements ClaimCheckStorage {
   }
 
   @Override
-  public String store(byte[] data) {
+  public String store(byte[] payload) {
     if (this.s3Client == null) {
       throw new IllegalStateException("S3Client is not initialized. Call configure() first.");
     }
@@ -179,7 +183,7 @@ public class S3Storage implements ClaimCheckStorage {
     try {
       PutObjectRequest putObjectRequest =
           PutObjectRequest.builder().bucket(this.bucketName).key(key).build();
-      this.s3Client.putObject(putObjectRequest, RequestBody.fromBytes(data));
+      this.s3Client.putObject(putObjectRequest, RequestBody.fromBytes(payload));
 
       return "s3://" + this.bucketName + "/" + key;
     } catch (Exception e) {
