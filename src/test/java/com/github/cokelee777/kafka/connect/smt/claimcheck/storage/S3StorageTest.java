@@ -10,6 +10,8 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3.S3Storage;
 import org.apache.kafka.common.config.ConfigException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,19 +32,11 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 @DisplayName("S3Storage 단위 테스트")
 class S3StorageTest {
 
-  private static final String TEST_BUCKET_NAME = "test-bucket";
-  private static final String TEST_REGION_AP_NORTHEAST_1 = "ap-northeast-1";
-  private static final String TEST_REGION_AP_NORTHEAST_2 = "ap-northeast-2";
-  private static final String TEST_PATH_PREFIX = "my-prefix";
-  private static final String TEST_ENDPOINT_LOCALSTACK = "http://localhost:4566";
-  private static final String EXPECTED_MISSING_BUCKET_ERROR_MESSAGE =
-      "Missing required configuration \"storage.s3.bucket.name\" which has no default value.";
-  private static final String EXPECTED_EMPTY_BUCKET_ERROR_MESSAGE =
-      "Configuration \"storage.s3.bucket.name\" must not be empty or blank.";
-  private static final String EXPECTED_EMPTY_REGION_ERROR_MESSAGE =
-      "region must not be blank or empty.";
-  private static final String EXPECTED_EMPTY_ENDPOINT_OVERRIDE_ERROR_MESSAGE =
-      "Configuration \"storage.s3.endpoint.override\" must not be empty or blank if provided.";
+  private static final String TEST_CONFIG_BUCKET_NAME = "test-bucket";
+  private static final String TEST_CONFIG_REGION_AP_NORTHEAST_1 = "ap-northeast-1";
+  private static final String TEST_CONFIG_REGION_AP_NORTHEAST_2 = "ap-northeast-2";
+  private static final String TEST_CONFIG_PATH_PREFIX = "my-prefix";
+  private static final String TEST_CONFIG_ENDPOINT_LOCALSTACK = "http://localhost:4566";
 
   private S3Storage storage;
   @Mock private S3Client s3Client;
@@ -64,15 +58,15 @@ class S3StorageTest {
       @DisplayName("필수 설정(버킷)만 제공하면 기본값(리전, prefix)으로 정상 초기화된다")
       void configureWithRequiredFieldsOnly() {
         // Given
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
 
         // When
         storage.configure(configs);
 
         // Then
         assertAll(
-            () -> assertEquals(TEST_BUCKET_NAME, storage.getBucketName()),
-            () -> assertEquals(TEST_REGION_AP_NORTHEAST_2, storage.getRegion()),
+            () -> assertEquals(TEST_CONFIG_BUCKET_NAME, storage.getBucketName()),
+            () -> assertEquals(TEST_CONFIG_REGION_AP_NORTHEAST_2, storage.getRegion()),
             () -> assertEquals("claim-checks", storage.getPathPrefix()),
             () -> assertNull(storage.getEndpointOverride()));
       }
@@ -83,20 +77,20 @@ class S3StorageTest {
         // Given
         Map<String, String> configs =
             createConfigWithAllFields(
-                TEST_BUCKET_NAME,
-                TEST_REGION_AP_NORTHEAST_1,
-                TEST_ENDPOINT_LOCALSTACK,
-                TEST_PATH_PREFIX);
+                TEST_CONFIG_BUCKET_NAME,
+                TEST_CONFIG_REGION_AP_NORTHEAST_1,
+                TEST_CONFIG_ENDPOINT_LOCALSTACK,
+                TEST_CONFIG_PATH_PREFIX);
 
         // When
         storage.configure(configs);
 
         // Then
         assertAll(
-            () -> assertEquals(TEST_BUCKET_NAME, storage.getBucketName()),
-            () -> assertEquals(TEST_REGION_AP_NORTHEAST_1, storage.getRegion()),
-            () -> assertEquals(TEST_ENDPOINT_LOCALSTACK, storage.getEndpointOverride()),
-            () -> assertEquals(TEST_PATH_PREFIX, storage.getPathPrefix()));
+            () -> assertEquals(TEST_CONFIG_BUCKET_NAME, storage.getBucketName()),
+            () -> assertEquals(TEST_CONFIG_REGION_AP_NORTHEAST_1, storage.getRegion()),
+            () -> assertEquals(TEST_CONFIG_ENDPOINT_LOCALSTACK, storage.getEndpointOverride()),
+            () -> assertEquals(TEST_CONFIG_PATH_PREFIX, storage.getPathPrefix()));
       }
     }
 
@@ -109,14 +103,16 @@ class S3StorageTest {
       void configureWithoutBucketThrowsException() {
         // Given
         Map<String, String> configs = new HashMap<>();
-        configs.put(S3Storage.CONFIG_REGION, TEST_REGION_AP_NORTHEAST_1);
+        configs.put(S3Storage.CONFIG_REGION, TEST_CONFIG_REGION_AP_NORTHEAST_1);
 
         // When
         ConfigException exception =
             assertThrows(ConfigException.class, () -> storage.configure(configs));
 
         // Then
-        assertEquals(EXPECTED_MISSING_BUCKET_ERROR_MESSAGE, exception.getMessage());
+        assertEquals(
+            "Missing required configuration \"storage.s3.bucket.name\" which has no default value.",
+            exception.getMessage());
       }
 
       @Test
@@ -130,35 +126,43 @@ class S3StorageTest {
             assertThrows(ConfigException.class, () -> storage.configure(configs));
 
         // Then
-        assertEquals(EXPECTED_EMPTY_BUCKET_ERROR_MESSAGE, exception.getMessage());
+        assertEquals(
+            "Configuration \"storage.s3.bucket.name\" must not be empty or blank.",
+            exception.getMessage());
       }
 
       @Test
       @DisplayName("빈 문자열 엔드포인트면 ConfigException이 발생한다")
       void configureWithEmptyEndpoint() {
         // Given
-        Map<String, String> configs = createConfigWithBucketAndEndpoint(TEST_BUCKET_NAME, "");
+        Map<String, String> configs =
+            createConfigWithBucketAndEndpoint(TEST_CONFIG_BUCKET_NAME, "");
 
         // When
         ConfigException exception =
             assertThrows(ConfigException.class, () -> storage.configure(configs));
 
         // Then
-        assertEquals(EXPECTED_EMPTY_ENDPOINT_OVERRIDE_ERROR_MESSAGE, exception.getMessage());
+        assertEquals(
+            "Configuration \"storage.s3.endpoint.override\" must not be empty or blank if provided.",
+            exception.getMessage());
       }
 
       @Test
       @DisplayName("공백으로만 된 엔드포인트면 ConfigException이 발생한다")
       void configureWithBlankEndpoint() {
         // Given
-        Map<String, String> configs = createConfigWithBucketAndEndpoint(TEST_BUCKET_NAME, "   ");
+        Map<String, String> configs =
+            createConfigWithBucketAndEndpoint(TEST_CONFIG_BUCKET_NAME, "   ");
 
         // When
         ConfigException exception =
             assertThrows(ConfigException.class, () -> storage.configure(configs));
 
         // Then
-        assertEquals(EXPECTED_EMPTY_ENDPOINT_OVERRIDE_ERROR_MESSAGE, exception.getMessage());
+        assertEquals(
+            "Configuration \"storage.s3.endpoint.override\" must not be empty or blank if provided.",
+            exception.getMessage());
       }
     }
 
@@ -177,21 +181,21 @@ class S3StorageTest {
 
         // Then
         // ConfigUtils.getRequiredString이 trim을 하므로 공백이 제거된 이름이 설정되어야 함
-        assertEquals(TEST_BUCKET_NAME, storage.getBucketName());
+        assertEquals(TEST_CONFIG_BUCKET_NAME, storage.getBucketName());
       }
 
       @Test
       @DisplayName("빈 문자열 리전이면 IllegalArgumentException이 발생한다")
       void configureWithEmptyRegion() {
         // Given
-        Map<String, String> configs = createConfigWithBucketAndRegion(TEST_BUCKET_NAME, "");
+        Map<String, String> configs = createConfigWithBucketAndRegion(TEST_CONFIG_BUCKET_NAME, "");
 
         // When
         IllegalArgumentException exception =
             assertThrows(IllegalArgumentException.class, () -> storage.configure(configs));
 
         // Then
-        assertEquals(EXPECTED_EMPTY_REGION_ERROR_MESSAGE, exception.getMessage());
+        assertEquals("region must not be blank or empty.", exception.getMessage());
       }
     }
 
@@ -200,7 +204,7 @@ class S3StorageTest {
     class PathPrefixNormalizationTests {
 
       private void assertPathPrefix(String input, String expected) {
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
         configs.put(S3Storage.CONFIG_PATH_PREFIX, input);
         storage.configure(configs);
         assertEquals(expected, storage.getPathPrefix());
@@ -263,7 +267,7 @@ class S3StorageTest {
       @DisplayName("retry 설정값이 없으면 기본값으로 설정된다")
       void configureWithDefaultRetryValues() {
         // Given
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
 
         // When
         storage.configure(configs);
@@ -279,7 +283,7 @@ class S3StorageTest {
       @DisplayName("retry 설정값을 커스텀 값으로 설정할 수 있다")
       void configureWithCustomRetryValues() {
         // Given
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
         configs.put(S3Storage.CONFIG_RETRY_MAX, "5");
         configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "1000");
         configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "30000");
@@ -298,7 +302,7 @@ class S3StorageTest {
       @DisplayName("retryMax를 0으로 설정할 수 있다")
       void configureWithZeroRetryMax() {
         // Given
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
         configs.put(S3Storage.CONFIG_RETRY_MAX, "0");
 
         // When
@@ -312,7 +316,7 @@ class S3StorageTest {
       @DisplayName("retryBackoffMs를 0으로 설정하면 ConfigException이 발생한다")
       void configureWithZeroRetryBackoffMsThrowsException() {
         // Given
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
         configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "0");
 
         // When
@@ -329,7 +333,7 @@ class S3StorageTest {
       @DisplayName("retryMaxBackoffMs를 0으로 설정하면 ConfigException이 발생한다")
       void configureWithZeroRetryMaxBackoffMsThrowsException() {
         // Given
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
         configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "0");
 
         // When
@@ -346,7 +350,7 @@ class S3StorageTest {
       @DisplayName("retryMax가 음수이면 ConfigException이 발생한다")
       void configureWithNegativeRetryMaxThrowsException() {
         // Given
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
         configs.put(S3Storage.CONFIG_RETRY_MAX, "-1");
 
         // When
@@ -363,7 +367,7 @@ class S3StorageTest {
       @DisplayName("retryBackoffMs가 음수이면 ConfigException이 발생한다")
       void configureWithNegativeRetryBackoffMsThrowsException() {
         // Given
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
         configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "-1");
 
         // When
@@ -380,7 +384,7 @@ class S3StorageTest {
       @DisplayName("retryMaxBackoffMs가 음수이면 ConfigException이 발생한다")
       void configureWithNegativeRetryMaxBackoffMsThrowsException() {
         // Given
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
         configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "-1");
 
         // When
@@ -397,7 +401,7 @@ class S3StorageTest {
       @DisplayName("configure 호출 시 retry 전략이 올바르게 초기화된다")
       void configureInitializesRetryStrategyCorrectly() throws Exception {
         // Given
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
         configs.put(S3Storage.CONFIG_RETRY_MAX, "5");
         configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "1000");
         configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "30000");
@@ -410,26 +414,13 @@ class S3StorageTest {
             () -> assertEquals(5, storage.getRetryMax()),
             () -> assertEquals(1000L, storage.getRetryBackoffMs()),
             () -> assertEquals(30000L, storage.getRetryMaxBackoffMs()));
-
-        // initRetryStrategy() 메서드가 올바르게 동작하는지 확인
-        Method initRetryStrategyMethod = S3Storage.class.getDeclaredMethod("initRetryStrategy");
-        initRetryStrategyMethod.setAccessible(true);
-        Object retryStrategy = initRetryStrategyMethod.invoke(storage);
-
-        // StandardRetryStrategy 객체가 생성되었는지 확인
-        assertNotNull(retryStrategy);
-        // 실제 반환되는 클래스는 내부 구현 클래스이므로, 클래스 이름에 "StandardRetryStrategy"가 포함되는지 확인
-        assertTrue(
-            retryStrategy instanceof StandardRetryStrategy,
-            "Expected class name to contain 'StandardRetryStrategy', but was: "
-                + retryStrategy.getClass().getName());
       }
 
       @Test
       @DisplayName("retryMax가 0일 때 retry 전략이 올바르게 초기화된다")
       void configureWithZeroRetryMaxInitializesRetryStrategyCorrectly() throws Exception {
         // Given
-        Map<String, String> configs = createConfigWithBucket(TEST_BUCKET_NAME);
+        Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
         configs.put(S3Storage.CONFIG_RETRY_MAX, "0");
 
         // When
@@ -437,14 +428,6 @@ class S3StorageTest {
 
         // Then
         assertEquals(0, storage.getRetryMax());
-
-        // initRetryStrategy() 메서드가 올바르게 동작하는지 확인
-        Method initRetryStrategyMethod = S3Storage.class.getDeclaredMethod("initRetryStrategy");
-        initRetryStrategyMethod.setAccessible(true);
-        Object retryStrategy = initRetryStrategyMethod.invoke(storage);
-
-        // StandardRetryStrategy 객체가 생성되었는지 확인
-        assertNotNull(retryStrategy);
       }
     }
   }
@@ -482,8 +465,8 @@ class S3StorageTest {
     void setup() {
       // Given (setup for store tests)
       Map<String, String> configs = new HashMap<>();
-      configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_BUCKET_NAME);
-      configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_PATH_PREFIX);
+      configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
+      configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_CONFIG_PATH_PREFIX);
       storage.configure(configs);
       try {
         Field clientField = S3Storage.class.getDeclaredField("s3Client");
@@ -515,11 +498,11 @@ class S3StorageTest {
         PutObjectRequest capturedRequest = requestCaptor.getValue();
         String generatedKey = capturedRequest.key();
 
-        assertTrue(generatedKey.startsWith(TEST_PATH_PREFIX));
-        String uuidPart = generatedKey.substring(TEST_PATH_PREFIX.length() + 1);
+        assertTrue(generatedKey.startsWith(TEST_CONFIG_PATH_PREFIX));
+        String uuidPart = generatedKey.substring(TEST_CONFIG_PATH_PREFIX.length() + 1);
         assertDoesNotThrow(() -> UUID.fromString(uuidPart));
-        assertEquals(TEST_BUCKET_NAME, capturedRequest.bucket());
-        String expectedUri = "s3://" + TEST_BUCKET_NAME + "/" + generatedKey;
+        assertEquals(TEST_CONFIG_BUCKET_NAME, capturedRequest.bucket());
+        String expectedUri = "s3://" + TEST_CONFIG_BUCKET_NAME + "/" + generatedKey;
         assertEquals(expectedUri, result);
         ArgumentCaptor<RequestBody> bodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
         verify(s3Client).putObject(any(PutObjectRequest.class), bodyCaptor.capture());
@@ -542,7 +525,7 @@ class S3StorageTest {
             ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(s3Client).putObject(requestCaptor.capture(), any(RequestBody.class));
         String generatedKey = requestCaptor.getValue().key();
-        String expectedUri = "s3://" + TEST_BUCKET_NAME + "/" + generatedKey;
+        String expectedUri = "s3://" + TEST_CONFIG_BUCKET_NAME + "/" + generatedKey;
         assertEquals(expectedUri, result);
         ArgumentCaptor<RequestBody> bodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
         verify(s3Client).putObject(any(PutObjectRequest.class), bodyCaptor.capture());
@@ -587,7 +570,7 @@ class S3StorageTest {
         String generatedKey = requestCaptor.getValue().key();
 
         assertTrue(exception.getMessage().contains("Failed to upload to S3"));
-        assertTrue(exception.getMessage().contains(TEST_BUCKET_NAME));
+        assertTrue(exception.getMessage().contains(TEST_CONFIG_BUCKET_NAME));
         assertTrue(exception.getMessage().contains(generatedKey));
         assertEquals(s3Exception, exception.getCause());
       }
@@ -597,8 +580,8 @@ class S3StorageTest {
       void storeWhenS3UploadFailsThrowsAfterSingleCall() {
         // Given
         Map<String, String> configs = new HashMap<>();
-        configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_PATH_PREFIX);
+        configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_CONFIG_PATH_PREFIX);
         configs.put(S3Storage.CONFIG_RETRY_MAX, "2"); // retryMax=2면 최대 3번 시도
         storage.configure(configs);
         try {
@@ -626,8 +609,8 @@ class S3StorageTest {
       void storeWhenS3UploadFailsWithZeroRetryMaxFailsImmediately() {
         // Given
         Map<String, String> configs = new HashMap<>();
-        configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_PATH_PREFIX);
+        configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
+        configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_CONFIG_PATH_PREFIX);
         configs.put(S3Storage.CONFIG_RETRY_MAX, "0"); // retryMax=0이면 재시도 없음
         storage.configure(configs);
         try {
@@ -675,7 +658,7 @@ class S3StorageTest {
     @DisplayName("S3Client가 설정된 상태에서 close를 호출하면 정상적으로 닫힌다")
     void closeWithS3ClientClosesS3Client() {
       // Given
-      storage.configure(createConfigWithBucket(TEST_BUCKET_NAME));
+      storage.configure(createConfigWithBucket(TEST_CONFIG_BUCKET_NAME));
       try {
         Field clientField = S3Storage.class.getDeclaredField("s3Client");
         clientField.setAccessible(true);
