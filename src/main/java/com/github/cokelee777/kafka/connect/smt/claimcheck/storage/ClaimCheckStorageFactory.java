@@ -1,6 +1,7 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.storage;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.ServiceLoader;
 import org.apache.kafka.common.config.ConfigException;
@@ -18,7 +19,15 @@ public class ClaimCheckStorageFactory {
 
   static {
     ServiceLoader.load(ClaimCheckStorage.class)
-        .forEach(storage -> STORAGE_MAP.put(storage.type().toLowerCase(), storage.getClass()));
+        .forEach(
+            storage -> {
+              String type = storage.type();
+              if (type == null || type.isBlank()) {
+                throw new ConfigException(
+                    "Storage type must be non-empty: " + storage.getClass().getName());
+              }
+              STORAGE_MAP.put(type.toLowerCase(Locale.ROOT), storage.getClass());
+            });
   }
 
   /**
@@ -29,7 +38,12 @@ public class ClaimCheckStorageFactory {
    * @throws ConfigException if the requested storage type is not found.
    */
   public static ClaimCheckStorage create(String type) {
-    Class<? extends ClaimCheckStorage> storageClass = STORAGE_MAP.get(type.toLowerCase());
+    if (type == null || type.isBlank()) {
+      throw new ConfigException("Storage type must be provided");
+    }
+
+    Class<? extends ClaimCheckStorage> storageClass =
+        STORAGE_MAP.get(type.toLowerCase(Locale.ROOT));
     if (storageClass == null) {
       throw new ConfigException("Unsupported storage type: " + type);
     }
