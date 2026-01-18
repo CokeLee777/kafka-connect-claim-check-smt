@@ -36,7 +36,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 class S3StorageIntegrationTest {
 
   private static final DockerImageName LOCALSTACK_IMAGE =
-      DockerImageName.parse("localstack/localstack:latest");
+      DockerImageName.parse("localstack/localstack:3.2.0");
 
   @Container
   private static final LocalStackContainer localstack =
