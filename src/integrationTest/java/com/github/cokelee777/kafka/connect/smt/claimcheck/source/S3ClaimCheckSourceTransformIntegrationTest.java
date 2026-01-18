@@ -28,7 +28,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 
 @Testcontainers
 @DisplayName("S3ClaimCheckSourceTransform 통합 테스트")
-class S3ClaimCheckSourceTransformTest {
+class S3ClaimCheckSourceTransformIntegrationTest {
 
   private static final DockerImageName LOCALSTACK_IMAGE =
       DockerImageName.parse("localstack/localstack:3.2.0");
@@ -37,9 +37,6 @@ class S3ClaimCheckSourceTransformTest {
   private static final LocalStackContainer localstack =
       new LocalStackContainer(LOCALSTACK_IMAGE).withServices(LocalStackContainer.Service.S3);
 
-  private static final String LOCALSTACK_ACCESS_KEY_CONFIG = "storage.s3.credentials.access.key.id";
-  private static final String LOCALSTACK_SECRET_KEY_CONFIG =
-      "storage.s3.credentials.secret.access.key";
   private static final String TEST_CONFIG_STORAGE_TYPE = "s3";
   private static final String TEST_CONFIG_THRESHOLD_BYTES = "10";
   private static final String TEST_CONFIG_BUCKET_NAME = "test-bucket";
@@ -85,11 +82,7 @@ class S3ClaimCheckSourceTransformTest {
         S3Storage.CONFIG_REGION,
         localstack.getRegion(),
         S3Storage.CONFIG_ENDPOINT_OVERRIDE,
-        localstack.getEndpointOverride(LocalStackContainer.Service.S3).toString(),
-        LOCALSTACK_ACCESS_KEY_CONFIG,
-        localstack.getAccessKey(),
-        LOCALSTACK_SECRET_KEY_CONFIG,
-        localstack.getSecretKey());
+        localstack.getEndpointOverride(LocalStackContainer.Service.S3).toString());
   }
 
   @Test

@@ -19,6 +19,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.http.ExecutableHttpRequest;
@@ -83,10 +84,6 @@ class S3StorageIntegrationTest {
         localstack.getRegion(),
         S3Storage.CONFIG_ENDPOINT_OVERRIDE,
         localstack.getEndpointOverride(LocalStackContainer.Service.S3).toString(),
-        "storage.s3.credentials.access.key.id",
-        localstack.getAccessKey(),
-        "storage.s3.credentials.secret.access.key",
-        localstack.getSecretKey(),
         S3Storage.CONFIG_RETRY_MAX,
         TEST_CONFIG_RETRY_MAX,
         S3Storage.CONFIG_RETRY_BACKOFF_MS,
@@ -168,11 +165,7 @@ class S3StorageIntegrationTest {
           S3Client.builder()
               .httpClient(failingHttpClient)
               .endpointOverride(URI.create(configs.get(S3Storage.CONFIG_ENDPOINT_OVERRIDE)))
-              .credentialsProvider(
-                  StaticCredentialsProvider.create(
-                      AwsBasicCredentials.create(
-                          configs.get("storage.s3.credentials.access.key.id"),
-                          configs.get("storage.s3.credentials.secret.access.key"))))
+              .credentialsProvider(DefaultCredentialsProvider.builder().build())
               .region(Region.of(configs.get(S3Storage.CONFIG_REGION)))
               .overrideConfiguration(
                   ClientOverrideConfiguration.builder().retryStrategy(retryStrategy).build())
