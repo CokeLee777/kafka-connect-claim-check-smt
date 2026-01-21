@@ -4,24 +4,36 @@ plugins {
 }
 
 dependencies {
+    // Kafka Connect
     compileOnly "org.apache.kafka:connect-api:${kafkaVersion}"
     compileOnly "org.apache.kafka:connect-transforms:${kafkaVersion}"
     compileOnly "org.apache.kafka:connect-json:${kafkaVersion}"
+
+    // Log
     compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
 
+    // AWS SDK
     implementation platform("software.amazon.awssdk:bom:${awsSdkVersion}")
     implementation "software.amazon.awssdk:s3"
     implementation "software.amazon.awssdk:url-connection-client"
 
+    // Kafka Connect(Test)
     testImplementation "org.apache.kafka:connect-api:${kafkaVersion}"
     testImplementation "org.apache.kafka:connect-transforms:${kafkaVersion}"
     testImplementation "org.apache.kafka:connect-json:${kafkaVersion}"
+
+    // Log(Test)
     testImplementation "org.slf4j:slf4j-simple:${slf4jVersion}"
 
+    // JUnit
     testImplementation platform("org.junit:junit-bom:${junitVersion}")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 
+    // AssertJ
+    testImplementation "org.assertj:assertj-core:${assertjVersion}"
+
+    // Mockito
     testImplementation platform("org.mockito:mockito-bom:${mockitoVersion}")
     testImplementation "org.mockito:mockito-core"
     testImplementation "org.mockito:mockito-junit-jupiter"

@@ -20,6 +20,7 @@ subprojects {
 
         junitVersion = '5.14.2'
         mockitoVersion = '5.21.0'
+        assertjVersion = '3.27.6'
     }
 }
 
