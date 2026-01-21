@@ -30,77 +30,67 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
  */
 public class S3Storage implements ClaimCheckStorage {
 
-  /** The S3 bucket name where the message payloads will be stored. */
-  public static final String CONFIG_BUCKET_NAME = "storage.s3.bucket.name";
+  public static final class Config {
 
-  /** The AWS region for the S3 bucket. */
-  public static final String CONFIG_REGION = "storage.s3.region";
+    public static final String BUCKET_NAME = "storage.s3.bucket.name";
+    public static final String REGION = "storage.s3.region";
+    public static final String PATH_PREFIX = "storage.s3.path.prefix";
+    public static final String ENDPOINT_OVERRIDE = "storage.s3.endpoint.override";
+    public static final String RETRY_MAX = "storage.s3.retry.max";
+    public static final String RETRY_BACKOFF_MS = "storage.s3.retry.backoff.ms";
+    public static final String RETRY_MAX_BACKOFF_MS = "storage.s3.retry.max.backoff.ms";
 
-  /** A prefix to be added to the S3 object key. */
-  public static final String CONFIG_PATH_PREFIX = "storage.s3.path.prefix";
+    private static final String DEFAULT_REGION = Region.AP_NORTHEAST_2.id();
+    private static final String DEFAULT_PATH_PREFIX = "claim-checks";
+    private static final int DEFAULT_RETRY_MAX = 3;
+    private static final long DEFAULT_RETRY_BACKOFF_MS = 300L;
+    private static final long DEFAULT_MAX_BACKOFF_MS = 20_000L;
 
-  /** An optional endpoint override for the S3 client, primarily for testing (e.g., LocalStack). */
-  public static final String CONFIG_ENDPOINT_OVERRIDE = "storage.s3.endpoint.override";
+    public static final ConfigDef DEFINITION =
+        new ConfigDef()
+            .define(BUCKET_NAME, ConfigDef.Type.STRING, ConfigDef.Importance.HIGH, "S3 Bucket Name")
+            .define(
+                REGION,
+                ConfigDef.Type.STRING,
+                DEFAULT_REGION,
+                ConfigDef.Importance.MEDIUM,
+                "AWS Region")
+            .define(
+                PATH_PREFIX,
+                ConfigDef.Type.STRING,
+                DEFAULT_PATH_PREFIX,
+                ConfigDef.Importance.LOW,
+                "Path prefix for stored objects in S3 bucket.")
+            .define(
+                ENDPOINT_OVERRIDE,
+                ConfigDef.Type.STRING,
+                null,
+                ConfigDef.Importance.LOW,
+                "S3 Endpoint Override. For testing purposes only (e.g., with LocalStack).")
+            .define(
+                RETRY_MAX,
+                ConfigDef.Type.INT,
+                DEFAULT_RETRY_MAX,
+                ConfigDef.Range.atLeast(0),
+                ConfigDef.Importance.MEDIUM,
+                "Maximum number of retries for S3 upload failures.")
+            .define(
+                RETRY_BACKOFF_MS,
+                ConfigDef.Type.LONG,
+                DEFAULT_RETRY_BACKOFF_MS,
+                ConfigDef.Range.atLeast(1L),
+                ConfigDef.Importance.LOW,
+                "Initial backoff time in milliseconds between S3 upload retries.")
+            .define(
+                RETRY_MAX_BACKOFF_MS,
+                ConfigDef.Type.LONG,
+                DEFAULT_MAX_BACKOFF_MS,
+                ConfigDef.Range.atLeast(1L),
+                ConfigDef.Importance.LOW,
+                "Maximum backoff time in milliseconds for S3 upload retries.");
 
-  /** The maximum number of retries for S3 upload operations upon failure. */
-  public static final String CONFIG_RETRY_MAX = "storage.s3.retry.max";
-
-  /** The initial backoff duration in milliseconds between retry attempts. */
-  public static final String CONFIG_RETRY_BACKOFF_MS = "storage.s3.retry.backoff.ms";
-
-  /** The maximum backoff duration in milliseconds between retry attempts. */
-  public static final String CONFIG_RETRY_MAX_BACKOFF_MS = "storage.s3.retry.max.backoff.ms";
-
-  public static final ConfigDef CONFIG_DEF =
-      new ConfigDef()
-          .define(
-              CONFIG_BUCKET_NAME,
-              ConfigDef.Type.STRING,
-              ConfigDef.Importance.HIGH,
-              "S3 Bucket Name")
-          .define(
-              CONFIG_REGION,
-              ConfigDef.Type.STRING,
-              "ap-northeast-2",
-              ConfigDef.Importance.MEDIUM,
-              "AWS Region")
-          .define(
-              CONFIG_PATH_PREFIX,
-              ConfigDef.Type.STRING,
-              "claim-checks",
-              ConfigDef.Importance.LOW,
-              "Path prefix for stored objects in S3 bucket.")
-          .define(
-              CONFIG_ENDPOINT_OVERRIDE,
-              ConfigDef.Type.STRING,
-              null,
-              ConfigDef.Importance.LOW,
-              "S3 Endpoint Override. For testing purposes only (e.g., with LocalStack).",
-              "Testing",
-              1,
-              ConfigDef.Width.MEDIUM,
-              "S3 Endpoint Override (For Testing)")
-          .define(
-              CONFIG_RETRY_MAX,
-              ConfigDef.Type.INT,
-              3,
-              ConfigDef.Range.atLeast(0),
-              ConfigDef.Importance.MEDIUM,
-              "Maximum number of retries for S3 upload failures.")
-          .define(
-              CONFIG_RETRY_BACKOFF_MS,
-              ConfigDef.Type.LONG,
-              300L,
-              ConfigDef.Range.atLeast(1L),
-              ConfigDef.Importance.LOW,
-              "Initial backoff time in milliseconds between S3 upload retries.")
-          .define(
-              CONFIG_RETRY_MAX_BACKOFF_MS,
-              ConfigDef.Type.LONG,
-              20_000L,
-              ConfigDef.Range.atLeast(1L),
-              ConfigDef.Importance.LOW,
-              "Maximum backoff time in milliseconds for S3 upload retries.");
+    private Config() {}
+  }
 
   private RetryStrategyFactory<StandardRetryStrategy> retryStrategyFactory =
       new S3RetryConfigAdapter();
@@ -176,15 +166,15 @@ public class S3Storage implements ClaimCheckStorage {
    */
   @Override
   public void configure(Map<String, ?> configs) {
-    SimpleConfig config = new SimpleConfig(CONFIG_DEF, configs);
+    SimpleConfig config = new SimpleConfig(Config.DEFINITION, configs);
 
-    this.bucketName = ConfigUtils.getRequiredString(config, CONFIG_BUCKET_NAME);
-    this.region = config.getString(CONFIG_REGION);
-    this.pathPrefix = ConfigUtils.normalizePathPrefix(config.getString(CONFIG_PATH_PREFIX));
-    this.endpointOverride = ConfigUtils.getOptionalString(config, CONFIG_ENDPOINT_OVERRIDE);
-    this.retryMax = config.getInt(CONFIG_RETRY_MAX);
-    this.retryBackoffMs = config.getLong(CONFIG_RETRY_BACKOFF_MS);
-    this.retryMaxBackoffMs = config.getLong(CONFIG_RETRY_MAX_BACKOFF_MS);
+    this.bucketName = ConfigUtils.getRequiredString(config, Config.BUCKET_NAME);
+    this.region = config.getString(Config.REGION);
+    this.pathPrefix = ConfigUtils.normalizePathPrefix(config.getString(Config.PATH_PREFIX));
+    this.endpointOverride = ConfigUtils.getOptionalString(config, Config.ENDPOINT_OVERRIDE);
+    this.retryMax = config.getInt(Config.RETRY_MAX);
+    this.retryBackoffMs = config.getLong(Config.RETRY_BACKOFF_MS);
+    this.retryMaxBackoffMs = config.getLong(Config.RETRY_MAX_BACKOFF_MS);
 
     if (this.s3Client != null) {
       return;

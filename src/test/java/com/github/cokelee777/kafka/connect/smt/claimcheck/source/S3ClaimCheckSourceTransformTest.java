@@ -82,8 +82,8 @@ public class S3ClaimCheckSourceTransformTest {
         // Given
         Map<String, String> configs =
             Map.of(
-                ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE, TEST_CONFIG_STORAGE_TYPE,
-                S3Storage.CONFIG_BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
+                ClaimCheckSourceTransform.Config.STORAGE_TYPE, TEST_CONFIG_STORAGE_TYPE,
+                S3Storage.Config.BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
 
         // When
         transform.configure(configs);
@@ -98,9 +98,9 @@ public class S3ClaimCheckSourceTransformTest {
         // Given
         Map<String, String> configs =
             Map.of(
-                ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE, TEST_CONFIG_STORAGE_TYPE,
-                ClaimCheckSourceTransform.CONFIG_THRESHOLD_BYTES, TEST_CONFIG_THRESHOLD_BYTES,
-                S3Storage.CONFIG_BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
+                ClaimCheckSourceTransform.Config.STORAGE_TYPE, TEST_CONFIG_STORAGE_TYPE,
+                ClaimCheckSourceTransform.Config.THRESHOLD_BYTES, TEST_CONFIG_THRESHOLD_BYTES,
+                S3Storage.Config.BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
 
         // When
         transform.configure(configs);
@@ -126,7 +126,7 @@ public class S3ClaimCheckSourceTransformTest {
 
         Map<String, String> configs =
             Map.of(
-                ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE,
+                ClaimCheckSourceTransform.Config.STORAGE_TYPE,
                 TEST_CONFIG_UNSUPPORTED_STORAGE_TYPE);
 
         // when & then
@@ -149,9 +149,9 @@ public class S3ClaimCheckSourceTransformTest {
           .thenReturn(storage);
 
       Map<String, String> configs = new HashMap<>();
-      configs.put(ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE, TEST_CONFIG_STORAGE_TYPE);
-      configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
-      configs.put(ClaimCheckSourceTransform.CONFIG_THRESHOLD_BYTES, TEST_CONFIG_THRESHOLD_BYTES);
+      configs.put(ClaimCheckSourceTransform.Config.STORAGE_TYPE, TEST_CONFIG_STORAGE_TYPE);
+      configs.put(S3Storage.Config.BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
+      configs.put(ClaimCheckSourceTransform.Config.THRESHOLD_BYTES, TEST_CONFIG_THRESHOLD_BYTES);
       transform.configure(configs);
     }
 
@@ -331,9 +331,9 @@ public class S3ClaimCheckSourceTransformTest {
     void shouldCallStorageClose() {
       // Given
       Map<String, String> configs = new HashMap<>();
-      configs.put(ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE, TEST_CONFIG_STORAGE_TYPE);
-      configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
-      configs.put(ClaimCheckSourceTransform.CONFIG_THRESHOLD_BYTES, TEST_CONFIG_THRESHOLD_BYTES);
+      configs.put(ClaimCheckSourceTransform.Config.STORAGE_TYPE, TEST_CONFIG_STORAGE_TYPE);
+      configs.put(S3Storage.Config.BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
+      configs.put(ClaimCheckSourceTransform.Config.THRESHOLD_BYTES, TEST_CONFIG_THRESHOLD_BYTES);
       transform.configure(configs);
 
       // When

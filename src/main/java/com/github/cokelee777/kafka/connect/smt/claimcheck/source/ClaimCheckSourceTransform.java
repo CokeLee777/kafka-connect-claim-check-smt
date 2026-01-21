@@ -14,8 +14,6 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.Transformation;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A Kafka Connect Single Message Transform (SMT) for implementing the Claim Check pattern.
@@ -29,53 +27,54 @@ import org.slf4j.LoggerFactory;
  */
 public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
-  private static final Logger log = LoggerFactory.getLogger(ClaimCheckSourceTransform.class);
+  public static final class Config {
 
-  /** Specifies the type of backend storage to use. For example, "s3". */
-  public static final String CONFIG_STORAGE_TYPE = "storage.type";
+    public static final String STORAGE_TYPE = "storage.type";
+    public static final String THRESHOLD_BYTES = "threshold.bytes";
 
-  /**
-   * The size threshold in bytes. Payloads larger than this will be offloaded to external storage.
-   */
-  public static final String CONFIG_THRESHOLD_BYTES = "threshold.bytes";
+    /** Default threshold: 1MB (1024 * 1024 bytes) */
+    private static final int DEFAULT_THRESHOLD_BYTES = 1024 * 1024;
 
-  private static final int DEFAULT_THRESHOLD_BYTES = 1024 * 1024;
-  public static final ConfigDef CONFIG_DEF =
-      new ConfigDef()
-          .define(
-              CONFIG_STORAGE_TYPE,
-              ConfigDef.Type.STRING,
-              ConfigDef.NO_DEFAULT_VALUE,
-              ConfigDef.ValidString.in(StorageType.S3.type()),
-              ConfigDef.Importance.HIGH,
-              "Storage implementation type")
-          .define(
-              CONFIG_THRESHOLD_BYTES,
-              ConfigDef.Type.INT,
-              DEFAULT_THRESHOLD_BYTES,
-              ConfigDef.Importance.HIGH,
-              "Payload size threshold in bytes");
+    public static final ConfigDef DEFINITION =
+        new ConfigDef()
+            .define(
+                STORAGE_TYPE,
+                ConfigDef.Type.STRING,
+                ConfigDef.NO_DEFAULT_VALUE,
+                ConfigDef.ValidString.in(StorageType.S3.type()),
+                ConfigDef.Importance.HIGH,
+                "Storage implementation type")
+            .define(
+                THRESHOLD_BYTES,
+                ConfigDef.Type.INT,
+                DEFAULT_THRESHOLD_BYTES,
+                ConfigDef.Range.atLeast(1L),
+                ConfigDef.Importance.HIGH,
+                "Payload size threshold in bytes");
+
+    private Config() {}
+  }
+
+  private static class TransformConfig extends AbstractConfig {
+    TransformConfig(Map<String, ?> originals) {
+      super(Config.DEFINITION, originals);
+    }
+  }
 
   private String storageType;
   private int thresholdBytes;
   private ClaimCheckStorage storage;
   private RecordSerializer recordSerializer;
 
-  public int getThresholdBytes() {
-    return this.thresholdBytes;
-  }
+  public ClaimCheckSourceTransform() {}
 
   public ClaimCheckStorage getStorage() {
     return this.storage;
   }
 
-  private static class TransformConfig extends AbstractConfig {
-    TransformConfig(Map<String, ?> originals) {
-      super(CONFIG_DEF, originals);
-    }
+  public int getThresholdBytes() {
+    return this.thresholdBytes;
   }
-
-  public ClaimCheckSourceTransform() {}
 
   /**
    * Configures this transform.
@@ -86,8 +85,8 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
   public void configure(Map<String, ?> configs) {
     TransformConfig config = new TransformConfig(configs);
 
-    this.thresholdBytes = config.getInt(CONFIG_THRESHOLD_BYTES);
-    this.storageType = config.getString(CONFIG_STORAGE_TYPE);
+    this.thresholdBytes = config.getInt(Config.THRESHOLD_BYTES);
+    this.storageType = config.getString(Config.STORAGE_TYPE);
 
     this.storage = ClaimCheckStorageFactory.create(this.storageType);
     this.storage.configure(configs);
@@ -145,7 +144,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
   @Override
   public ConfigDef config() {
-    return CONFIG_DEF;
+    return Config.DEFINITION;
   }
 
   @Override

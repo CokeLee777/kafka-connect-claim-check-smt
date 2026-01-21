@@ -81,17 +81,17 @@ class S3StorageIntegrationTest {
 
   private Map<String, String> createS3StorageConfig() {
     return Map.of(
-        S3Storage.CONFIG_BUCKET_NAME,
+        S3Storage.Config.BUCKET_NAME,
         TEST_CONFIG_BUCKET_NAME,
-        S3Storage.CONFIG_REGION,
+        S3Storage.Config.REGION,
         localstack.getRegion(),
-        S3Storage.CONFIG_ENDPOINT_OVERRIDE,
+        S3Storage.Config.ENDPOINT_OVERRIDE,
         localstack.getEndpointOverride(LocalStackContainer.Service.S3).toString(),
-        S3Storage.CONFIG_RETRY_MAX,
+        S3Storage.Config.RETRY_MAX,
         TEST_CONFIG_RETRY_MAX,
-        S3Storage.CONFIG_RETRY_BACKOFF_MS,
+        S3Storage.Config.RETRY_BACKOFF_MS,
         TEST_CONFIG_RETRY_BACKOFF_MS,
-        S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS,
+        S3Storage.Config.RETRY_MAX_BACKOFF_MS,
         TEST_CONFIG_RETRY_MAX_BACKOFF_MS);
   }
 
@@ -167,9 +167,9 @@ class S3StorageIntegrationTest {
       try (S3Client customS3Client =
           S3Client.builder()
               .httpClient(failingHttpClient)
-              .endpointOverride(URI.create(configs.get(S3Storage.CONFIG_ENDPOINT_OVERRIDE)))
+              .endpointOverride(URI.create(configs.get(S3Storage.Config.ENDPOINT_OVERRIDE)))
               .credentialsProvider(DefaultCredentialsProvider.builder().build())
-              .region(Region.of(configs.get(S3Storage.CONFIG_REGION)))
+              .region(Region.of(configs.get(S3Storage.Config.REGION)))
               .overrideConfiguration(
                   ClientOverrideConfiguration.builder().retryStrategy(retryStrategy).build())
               .forcePathStyle(true)

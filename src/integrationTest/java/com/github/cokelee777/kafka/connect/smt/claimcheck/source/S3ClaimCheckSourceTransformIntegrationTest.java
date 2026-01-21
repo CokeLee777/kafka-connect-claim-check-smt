@@ -78,15 +78,15 @@ class S3ClaimCheckSourceTransformIntegrationTest {
 
   private Map<String, String> createTransformConfig() {
     return Map.of(
-        ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE,
+        ClaimCheckSourceTransform.Config.STORAGE_TYPE,
         TEST_CONFIG_STORAGE_TYPE,
-        ClaimCheckSourceTransform.CONFIG_THRESHOLD_BYTES,
+        ClaimCheckSourceTransform.Config.THRESHOLD_BYTES,
         TEST_CONFIG_THRESHOLD_BYTES,
-        S3Storage.CONFIG_BUCKET_NAME,
+        S3Storage.Config.BUCKET_NAME,
         TEST_CONFIG_BUCKET_NAME,
-        S3Storage.CONFIG_REGION,
+        S3Storage.Config.REGION,
         localstack.getRegion(),
-        S3Storage.CONFIG_ENDPOINT_OVERRIDE,
+        S3Storage.Config.ENDPOINT_OVERRIDE,
         localstack.getEndpointOverride(LocalStackContainer.Service.S3).toString());
   }
 

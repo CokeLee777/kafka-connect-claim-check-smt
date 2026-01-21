@@ -100,7 +100,7 @@ class S3StorageTest {
       void configureWithoutBucketThrowsException() {
         // Given
         Map<String, String> configs = new HashMap<>();
-        configs.put(S3Storage.CONFIG_REGION, TEST_CONFIG_REGION_AP_NORTHEAST_1);
+        configs.put(S3Storage.Config.REGION, TEST_CONFIG_REGION_AP_NORTHEAST_1);
 
         // When
         ConfigException exception =
@@ -202,7 +202,7 @@ class S3StorageTest {
 
       private void assertPathPrefix(String input, String expected) {
         Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_PATH_PREFIX, input);
+        configs.put(S3Storage.Config.PATH_PREFIX, input);
         storage.configure(configs);
         assertEquals(expected, storage.getPathPrefix());
       }
@@ -281,9 +281,9 @@ class S3StorageTest {
       void configureWithCustomRetryValues() {
         // Given
         Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_RETRY_MAX, "5");
-        configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "1000");
-        configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "30000");
+        configs.put(S3Storage.Config.RETRY_MAX, "5");
+        configs.put(S3Storage.Config.RETRY_BACKOFF_MS, "1000");
+        configs.put(S3Storage.Config.RETRY_MAX_BACKOFF_MS, "30000");
 
         // When
         storage.configure(configs);
@@ -300,7 +300,7 @@ class S3StorageTest {
       void configureWithZeroRetryMax() {
         // Given
         Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_RETRY_MAX, "0");
+        configs.put(S3Storage.Config.RETRY_MAX, "0");
 
         // When
         storage.configure(configs);
@@ -314,7 +314,7 @@ class S3StorageTest {
       void configureWithZeroRetryBackoffMsThrowsException() {
         // Given
         Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "0");
+        configs.put(S3Storage.Config.RETRY_BACKOFF_MS, "0");
 
         // When
         ConfigException exception =
@@ -331,7 +331,7 @@ class S3StorageTest {
       void configureWithZeroRetryMaxBackoffMsThrowsException() {
         // Given
         Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "0");
+        configs.put(S3Storage.Config.RETRY_MAX_BACKOFF_MS, "0");
 
         // When
         ConfigException exception =
@@ -348,7 +348,7 @@ class S3StorageTest {
       void configureWithNegativeRetryMaxThrowsException() {
         // Given
         Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_RETRY_MAX, "-1");
+        configs.put(S3Storage.Config.RETRY_MAX, "-1");
 
         // When
         ConfigException exception =
@@ -365,7 +365,7 @@ class S3StorageTest {
       void configureWithNegativeRetryBackoffMsThrowsException() {
         // Given
         Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "-1");
+        configs.put(S3Storage.Config.RETRY_BACKOFF_MS, "-1");
 
         // When
         ConfigException exception =
@@ -382,7 +382,7 @@ class S3StorageTest {
       void configureWithNegativeRetryMaxBackoffMsThrowsException() {
         // Given
         Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "-1");
+        configs.put(S3Storage.Config.RETRY_MAX_BACKOFF_MS, "-1");
 
         // When
         ConfigException exception =
@@ -399,9 +399,9 @@ class S3StorageTest {
       void configureInitializesRetryStrategyCorrectly() throws Exception {
         // Given
         Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_RETRY_MAX, "5");
-        configs.put(S3Storage.CONFIG_RETRY_BACKOFF_MS, "1000");
-        configs.put(S3Storage.CONFIG_RETRY_MAX_BACKOFF_MS, "30000");
+        configs.put(S3Storage.Config.RETRY_MAX, "5");
+        configs.put(S3Storage.Config.RETRY_BACKOFF_MS, "1000");
+        configs.put(S3Storage.Config.RETRY_MAX_BACKOFF_MS, "30000");
 
         // When
         storage.configure(configs);
@@ -418,7 +418,7 @@ class S3StorageTest {
       void configureWithZeroRetryMaxInitializesRetryStrategyCorrectly() throws Exception {
         // Given
         Map<String, String> configs = createConfigWithBucket(TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_RETRY_MAX, "0");
+        configs.put(S3Storage.Config.RETRY_MAX, "0");
 
         // When
         storage.configure(configs);
@@ -431,27 +431,27 @@ class S3StorageTest {
 
   private Map<String, String> createConfigWithBucket(String bucket) {
     Map<String, String> configs = new HashMap<>();
-    configs.put(S3Storage.CONFIG_BUCKET_NAME, bucket);
+    configs.put(S3Storage.Config.BUCKET_NAME, bucket);
     return configs;
   }
 
   private Map<String, String> createConfigWithBucketAndRegion(String bucket, String region) {
     Map<String, String> configs = createConfigWithBucket(bucket);
-    configs.put(S3Storage.CONFIG_REGION, region);
+    configs.put(S3Storage.Config.REGION, region);
     return configs;
   }
 
   private Map<String, String> createConfigWithBucketAndEndpoint(String bucket, String endpoint) {
     Map<String, String> configs = createConfigWithBucket(bucket);
-    configs.put(S3Storage.CONFIG_ENDPOINT_OVERRIDE, endpoint);
+    configs.put(S3Storage.Config.ENDPOINT_OVERRIDE, endpoint);
     return configs;
   }
 
   private Map<String, String> createConfigWithAllFields(
       String bucket, String region, String endpoint, String prefix) {
     Map<String, String> configs = createConfigWithBucketAndRegion(bucket, region);
-    configs.put(S3Storage.CONFIG_ENDPOINT_OVERRIDE, endpoint);
-    configs.put(S3Storage.CONFIG_PATH_PREFIX, prefix);
+    configs.put(S3Storage.Config.ENDPOINT_OVERRIDE, endpoint);
+    configs.put(S3Storage.Config.PATH_PREFIX, prefix);
     return configs;
   }
 
@@ -462,8 +462,8 @@ class S3StorageTest {
     void setup() {
       // Given (setup for store tests)
       Map<String, String> configs = new HashMap<>();
-      configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
-      configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_CONFIG_PATH_PREFIX);
+      configs.put(S3Storage.Config.BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
+      configs.put(S3Storage.Config.PATH_PREFIX, TEST_CONFIG_PATH_PREFIX);
       storage.configure(configs);
       try {
         Field clientField = S3Storage.class.getDeclaredField("s3Client");
@@ -577,9 +577,9 @@ class S3StorageTest {
       void storeWhenS3UploadFailsThrowsAfterSingleCall() {
         // Given
         Map<String, String> configs = new HashMap<>();
-        configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_CONFIG_PATH_PREFIX);
-        configs.put(S3Storage.CONFIG_RETRY_MAX, "2"); // retryMax=2면 최대 3번 시도
+        configs.put(S3Storage.Config.BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
+        configs.put(S3Storage.Config.PATH_PREFIX, TEST_CONFIG_PATH_PREFIX);
+        configs.put(S3Storage.Config.RETRY_MAX, "2"); // retryMax=2면 최대 3번 시도
         storage.configure(configs);
         try {
           Field clientField = S3Storage.class.getDeclaredField("s3Client");
@@ -606,9 +606,9 @@ class S3StorageTest {
       void storeWhenS3UploadFailsWithZeroRetryMaxFailsImmediately() {
         // Given
         Map<String, String> configs = new HashMap<>();
-        configs.put(S3Storage.CONFIG_BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
-        configs.put(S3Storage.CONFIG_PATH_PREFIX, TEST_CONFIG_PATH_PREFIX);
-        configs.put(S3Storage.CONFIG_RETRY_MAX, "0"); // retryMax=0이면 재시도 없음
+        configs.put(S3Storage.Config.BUCKET_NAME, TEST_CONFIG_BUCKET_NAME);
+        configs.put(S3Storage.Config.PATH_PREFIX, TEST_CONFIG_PATH_PREFIX);
+        configs.put(S3Storage.Config.RETRY_MAX, "0"); // retryMax=0이면 재시도 없음
         storage.configure(configs);
         try {
           Field clientField = S3Storage.class.getDeclaredField("s3Client");
