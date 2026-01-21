@@ -12,7 +12,7 @@ import software.amazon.awssdk.retries.api.BackoffStrategy;
  * <p>This class adapts the SMT's retry configuration to the format expected by the AWS SDK,
  * specifically creating an exponential backoff strategy.
  */
-public class S3RetryConfigAdapter implements RetryStrategyFactory<StandardRetryStrategy> {
+public class S3RetryStrategyFactory implements RetryStrategyFactory<StandardRetryStrategy> {
 
   /**
    * Creates a {@link StandardRetryStrategy} for the AWS SDK.

@@ -2,23 +2,14 @@ package com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3;
 
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorage;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.StorageType;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.retry.RetryConfig;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.retry.RetryStrategyFactory;
 import com.github.cokelee777.kafka.connect.smt.utils.ConfigUtils;
-import java.net.URI;
-import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.retries.StandardRetryStrategy;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
@@ -101,63 +92,22 @@ public class S3Storage implements ClaimCheckStorage {
     private Config() {}
   }
 
-  private RetryStrategyFactory<StandardRetryStrategy> retryStrategyFactory =
-      new S3RetryConfigAdapter();
-
-  private String bucketName;
-  private String region;
-  private String pathPrefix;
-  private String endpointOverride;
-  private int retryMax;
-  private long retryBackoffMs;
-  private long retryMaxBackoffMs;
-
   private S3Client s3Client;
+  private String bucketName;
+  private String pathPrefix;
 
-  /**
-   * Default constructor. The S3 client will be created and configured based on the properties
-   * passed to the {@link #configure(Map)} method.
-   */
   public S3Storage() {}
 
-  /**
-   * Constructor for testing purposes, allowing injection of a mocked or pre-configured S3 client.
-   *
-   * @param s3Client The S3 client to use for storage operations.
-   * @param retryStrategyFactory A factory to create the retry strategy.
-   */
-  public S3Storage(
-      S3Client s3Client, RetryStrategyFactory<StandardRetryStrategy> retryStrategyFactory) {
+  public S3Storage(S3Client s3Client) {
     this.s3Client = s3Client;
-    this.retryStrategyFactory = retryStrategyFactory;
   }
 
   public String getBucketName() {
     return bucketName;
   }
 
-  public String getRegion() {
-    return region;
-  }
-
   public String getPathPrefix() {
     return pathPrefix;
-  }
-
-  public String getEndpointOverride() {
-    return endpointOverride;
-  }
-
-  public int getRetryMax() {
-    return retryMax;
-  }
-
-  public long getRetryBackoffMs() {
-    return retryBackoffMs;
-  }
-
-  public long getRetryMaxBackoffMs() {
-    return retryMaxBackoffMs;
   }
 
   @Override
@@ -165,53 +115,17 @@ public class S3Storage implements ClaimCheckStorage {
     return StorageType.S3.type();
   }
 
-  /**
-   * Configures the S3 storage backend.
-   *
-   * <p>This method initializes the S3 client based on the provided configuration properties. If an
-   * S3 client has already been injected (e.g., for testing), this method will not create a new one.
-   *
-   * @param configs The configuration properties for the S3 storage.
-   */
   @Override
   public void configure(Map<String, ?> configs) {
     SimpleConfig config = new SimpleConfig(Config.DEFINITION, configs);
 
     this.bucketName = config.getString(Config.BUCKET_NAME);
-    this.region = config.getString(Config.REGION);
     this.pathPrefix = ConfigUtils.normalizePathPrefix(config.getString(Config.PATH_PREFIX));
-    this.endpointOverride = config.getString(Config.ENDPOINT_OVERRIDE);
-    this.retryMax = config.getInt(Config.RETRY_MAX);
-    this.retryBackoffMs = config.getLong(Config.RETRY_BACKOFF_MS);
-    this.retryMaxBackoffMs = config.getLong(Config.RETRY_MAX_BACKOFF_MS);
 
-    if (this.s3Client != null) {
-      return;
+    if (this.s3Client == null) {
+      S3ClientFactory factory = new S3ClientFactory(config);
+      this.s3Client = factory.create();
     }
-
-    RetryConfig retryConfig =
-        new RetryConfig(
-            // maxAttempts = initial attempt (1) + retry count
-            retryMax + 1,
-            Duration.ofMillis(this.retryBackoffMs),
-            Duration.ofMillis(this.retryMaxBackoffMs));
-    StandardRetryStrategy retryStrategy = this.retryStrategyFactory.create(retryConfig);
-
-    S3ClientBuilder builder =
-        S3Client.builder()
-            .httpClient(UrlConnectionHttpClient.builder().build())
-            .credentialsProvider(DefaultCredentialsProvider.builder().build())
-            .overrideConfiguration(
-                ClientOverrideConfiguration.builder().retryStrategy(retryStrategy).build());
-
-    builder.region(Region.of(this.region));
-
-    if (this.endpointOverride != null) {
-      builder.endpointOverride(URI.create(this.endpointOverride));
-      builder.forcePathStyle(true);
-    }
-
-    this.s3Client = builder.build();
   }
 
   /**
