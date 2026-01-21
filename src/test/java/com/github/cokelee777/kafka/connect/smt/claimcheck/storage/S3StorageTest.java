@@ -116,7 +116,7 @@ class S3StorageTest {
       @DisplayName("빈 문자열 버킷 이름이면 ConfigException이 발생한다")
       void configureWithEmptyBucketName() {
         // Given
-        Map<String, String> configs = createConfigWithBucket("");
+        Map<String, String> configs = createConfigWithBucket(" ");
 
         // When
         ConfigException exception =
@@ -124,7 +124,7 @@ class S3StorageTest {
 
         // Then
         assertEquals(
-            "Configuration \"storage.s3.bucket.name\" must not be empty or blank.",
+            "Invalid value  for configuration storage.s3.bucket.name: String must be non-empty",
             exception.getMessage());
       }
 
@@ -141,7 +141,7 @@ class S3StorageTest {
 
         // Then
         assertEquals(
-            "Configuration \"storage.s3.endpoint.override\" must not be empty or blank if provided.",
+            "Invalid value  for configuration storage.s3.endpoint.override: String must be non-empty",
             exception.getMessage());
       }
 
@@ -158,7 +158,28 @@ class S3StorageTest {
 
         // Then
         assertEquals(
-            "Configuration \"storage.s3.endpoint.override\" must not be empty or blank if provided.",
+            "Invalid value  for configuration storage.s3.endpoint.override: String must be non-empty",
+            exception.getMessage());
+      }
+
+      @Test
+      @DisplayName("공백으로만 된 pathPrefix는 ConfigException이 발생한다")
+      void configureWithBlankPathPrefix() {
+        // Given
+        Map<String, String> configs =
+            createConfigWithAllFields(
+                TEST_CONFIG_BUCKET_NAME,
+                TEST_CONFIG_REGION_AP_NORTHEAST_2,
+                TEST_CONFIG_ENDPOINT_LOCALSTACK,
+                " ");
+
+        // When
+        ConfigException exception =
+            assertThrows(ConfigException.class, () -> storage.configure(configs));
+
+        // Then
+        assertEquals(
+            "Invalid value  for configuration storage.s3.path.prefix: String must be non-empty",
             exception.getMessage());
       }
     }
@@ -188,11 +209,13 @@ class S3StorageTest {
         Map<String, String> configs = createConfigWithBucketAndRegion(TEST_CONFIG_BUCKET_NAME, "");
 
         // When
-        IllegalArgumentException exception =
-            assertThrows(IllegalArgumentException.class, () -> storage.configure(configs));
+        ConfigException exception =
+            assertThrows(ConfigException.class, () -> storage.configure(configs));
 
         // Then
-        assertEquals("region must not be blank or empty.", exception.getMessage());
+        assertEquals(
+            "Invalid value  for configuration storage.s3.region: String must be non-empty",
+            exception.getMessage());
       }
     }
 
@@ -235,18 +258,6 @@ class S3StorageTest {
       @DisplayName("공백을 포함하는 pathPrefix는 trim된다")
       void shouldTrimAndAddSlash() {
         assertPathPrefix("  my-prefix  ", "my-prefix");
-      }
-
-      @Test
-      @DisplayName("빈 pathPrefix는 그대로 유지된다")
-      void shouldNormalizeEmptyPrefix() {
-        assertPathPrefix("", "");
-      }
-
-      @Test
-      @DisplayName("공백으로만 된 pathPrefix는 빈 pathPrefix로 된다")
-      void shouldNormalizeBlankPrefix() {
-        assertPathPrefix("   ", "");
       }
 
       @Test

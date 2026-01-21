@@ -48,23 +48,32 @@ public class S3Storage implements ClaimCheckStorage {
 
     public static final ConfigDef DEFINITION =
         new ConfigDef()
-            .define(BUCKET_NAME, ConfigDef.Type.STRING, ConfigDef.Importance.HIGH, "S3 Bucket Name")
+            .define(
+                BUCKET_NAME,
+                ConfigDef.Type.STRING,
+                ConfigDef.NO_DEFAULT_VALUE,
+                new ConfigDef.NonEmptyString(),
+                ConfigDef.Importance.HIGH,
+                "S3 Bucket Name")
             .define(
                 REGION,
                 ConfigDef.Type.STRING,
                 DEFAULT_REGION,
+                new ConfigDef.NonEmptyString(),
                 ConfigDef.Importance.MEDIUM,
                 "AWS Region")
             .define(
                 PATH_PREFIX,
                 ConfigDef.Type.STRING,
                 DEFAULT_PATH_PREFIX,
-                ConfigDef.Importance.LOW,
+                new ConfigDef.NonEmptyString(),
+                ConfigDef.Importance.MEDIUM,
                 "Path prefix for stored objects in S3 bucket.")
             .define(
                 ENDPOINT_OVERRIDE,
                 ConfigDef.Type.STRING,
                 null,
+                new ConfigDef.NonEmptyString(),
                 ConfigDef.Importance.LOW,
                 "S3 Endpoint Override. For testing purposes only (e.g., with LocalStack).")
             .define(
@@ -72,7 +81,7 @@ public class S3Storage implements ClaimCheckStorage {
                 ConfigDef.Type.INT,
                 DEFAULT_RETRY_MAX,
                 ConfigDef.Range.atLeast(0),
-                ConfigDef.Importance.MEDIUM,
+                ConfigDef.Importance.LOW,
                 "Maximum number of retries for S3 upload failures.")
             .define(
                 RETRY_BACKOFF_MS,
@@ -168,10 +177,10 @@ public class S3Storage implements ClaimCheckStorage {
   public void configure(Map<String, ?> configs) {
     SimpleConfig config = new SimpleConfig(Config.DEFINITION, configs);
 
-    this.bucketName = ConfigUtils.getRequiredString(config, Config.BUCKET_NAME);
+    this.bucketName = config.getString(Config.BUCKET_NAME);
     this.region = config.getString(Config.REGION);
     this.pathPrefix = ConfigUtils.normalizePathPrefix(config.getString(Config.PATH_PREFIX));
-    this.endpointOverride = ConfigUtils.getOptionalString(config, Config.ENDPOINT_OVERRIDE);
+    this.endpointOverride = config.getString(Config.ENDPOINT_OVERRIDE);
     this.retryMax = config.getInt(Config.RETRY_MAX);
     this.retryBackoffMs = config.getLong(Config.RETRY_BACKOFF_MS);
     this.retryMaxBackoffMs = config.getLong(Config.RETRY_MAX_BACKOFF_MS);
