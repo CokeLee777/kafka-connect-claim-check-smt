@@ -1,134 +1,108 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.source;
 
-import com.github.cokelee777.kafka.connect.smt.claimcheck.internal.JsonConverterFactory;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.internal.JsonRecordValueSerializer;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.internal.RecordValueSerializer;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.internal.RecordSerializer;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.internal.RecordSerializerFactory;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckReference;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorage;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageFactory;
-import com.github.cokelee777.kafka.connect.smt.utils.ConfigUtils;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.StorageType;
 import java.util.Map;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.Transformation;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * A Kafka Connect Single Message Transform (SMT) for implementing the Claim Check pattern.
- *
- * <p>This transform intercepts outgoing source records. If a record's value payload exceeds a
- * configured size threshold, it is stored in an external storage system (e.g., S3), and the
- * original payload is replaced with a "claim check" reference to that stored data.
- *
- * <p>Records with payloads smaller than the threshold are passed through unmodified. This is
- * intended for use with source connectors.
- */
 public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
-  private static final Logger log = LoggerFactory.getLogger(ClaimCheckSourceTransform.class);
-  /** Specifies the type of backend storage to use. For example, "s3". */
-  public static final String CONFIG_STORAGE_TYPE = "storage.type";
-  /**
-   * The size threshold in bytes. Payloads larger than this will be offloaded to external storage.
-   */
-  public static final String CONFIG_THRESHOLD_BYTES = "threshold.bytes";
-  private static final int DEFAULT_THRESHOLD_BYTES = 1024 * 1024;
-  public static final ConfigDef CONFIG_DEF =
-      new ConfigDef()
-          .define(
-              CONFIG_STORAGE_TYPE,
-              ConfigDef.Type.STRING,
-              ConfigDef.Importance.HIGH,
-              "Storage implementation type")
-          .define(
-              CONFIG_THRESHOLD_BYTES,
-              ConfigDef.Type.INT,
-              DEFAULT_THRESHOLD_BYTES,
-              ConfigDef.Importance.HIGH,
-              "Payload size threshold in bytes");
+  public static final class Config {
 
-  private int thresholdBytes;
-  private ClaimCheckStorage storage;
-  private RecordValueSerializer recordValueSerializer;
+    public static final String STORAGE_TYPE = "storage.type";
+    public static final String THRESHOLD_BYTES = "threshold.bytes";
 
-  public int getThresholdBytes() {
-    return thresholdBytes;
-  }
+    /** Default threshold: 1MB (1024 * 1024 bytes) */
+    private static final int DEFAULT_THRESHOLD_BYTES = 1024 * 1024;
 
-  public ClaimCheckStorage getStorage() {
-    return storage;
+    public static final ConfigDef DEFINITION =
+        new ConfigDef()
+            .define(
+                STORAGE_TYPE,
+                ConfigDef.Type.STRING,
+                ConfigDef.NO_DEFAULT_VALUE,
+                ConfigDef.ValidString.in(StorageType.S3.type()),
+                ConfigDef.Importance.HIGH,
+                "Storage implementation type")
+            .define(
+                THRESHOLD_BYTES,
+                ConfigDef.Type.INT,
+                DEFAULT_THRESHOLD_BYTES,
+                ConfigDef.Range.atLeast(1L),
+                ConfigDef.Importance.HIGH,
+                "Payload size threshold in bytes");
+
+    private Config() {}
   }
 
   private static class TransformConfig extends AbstractConfig {
     TransformConfig(Map<String, ?> originals) {
-      super(CONFIG_DEF, originals);
+      super(Config.DEFINITION, originals);
     }
   }
 
+  private String storageType;
+  private int thresholdBytes;
+  private ClaimCheckStorage storage;
+  private RecordSerializer recordSerializer;
+
   public ClaimCheckSourceTransform() {}
 
-  /**
-   * Configures this transform.
-   *
-   * @param configs The configuration settings.
-   */
+  public ClaimCheckStorage getStorage() {
+    return this.storage;
+  }
+
+  public int getThresholdBytes() {
+    return this.thresholdBytes;
+  }
+
   @Override
   public void configure(Map<String, ?> configs) {
     TransformConfig config = new TransformConfig(configs);
 
-    this.thresholdBytes = config.getInt(CONFIG_THRESHOLD_BYTES);
-    String storageType = ConfigUtils.getRequiredString(config, CONFIG_STORAGE_TYPE);
+    this.thresholdBytes = config.getInt(Config.THRESHOLD_BYTES);
+    this.storageType = config.getString(Config.STORAGE_TYPE);
 
-    this.storage = ClaimCheckStorageFactory.create(storageType);
+    this.storage = ClaimCheckStorageFactory.create(this.storageType);
     this.storage.configure(configs);
 
-    JsonConverter converter = JsonConverterFactory.createValueConverter();
-    this.recordValueSerializer = new JsonRecordValueSerializer(converter);
-
-    log.info(
-        "ClaimCheckTransform initialized. Threshold: {} bytes, Storage: {}",
-        this.thresholdBytes,
-        storageType);
+    this.recordSerializer = RecordSerializerFactory.create();
   }
 
-  /**
-   * Applies the claim check logic to a source record.
-   *
-   * <p>If the record's value payload is larger than the configured threshold, it is uploaded to the
-   * backend storage, and the record's value is replaced with a claim check reference. Otherwise,
-   * the record is returned unchanged.
-   *
-   * @param record The source record to process.
-   * @return A new record with a claim check if the payload was oversized, or the original record.
-   */
   @Override
   public SourceRecord apply(SourceRecord record) {
     if (record.value() == null) {
       return record;
     }
 
-    byte[] serializedValue = this.recordValueSerializer.serialize(record);
-    if (serializedValue == null) {
+    byte[] serializedRecord = serializeRecord(record);
+    if (serializedRecord == null || serializedRecord.length <= this.thresholdBytes) {
       return record;
     }
 
-    if (serializedValue.length <= this.thresholdBytes) {
-      return record;
+    return createClaimCheckRecord(record, serializedRecord);
+  }
+
+  private byte[] serializeRecord(SourceRecord record) {
+    if (this.recordSerializer == null) {
+      throw new IllegalStateException("RecordSerializer not configured");
     }
+    return this.recordSerializer.serialize(record);
+  }
 
-    String referenceUrl = this.storage.store(serializedValue);
-    Struct referenceStruct =
-        ClaimCheckReference.create(referenceUrl, serializedValue.length).toStruct();
-
-    log.info(
-        "Payload too large ({} bytes). Uploaded to storage: {}",
-        serializedValue.length,
-        referenceUrl);
+  private SourceRecord createClaimCheckRecord(SourceRecord record, byte[] serializedRecord) {
+    String referenceUrl = this.storage.store(serializedRecord);
+    Struct referenceValue =
+        ClaimCheckReference.create(referenceUrl, serializedRecord.length).toStruct();
 
     return record.newRecord(
         record.topic(),
@@ -136,21 +110,15 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
         record.keySchema(),
         record.key(),
         ClaimCheckSchema.SCHEMA,
-        referenceStruct,
+        referenceValue,
         record.timestamp());
   }
 
-  /**
-   * Returns the configuration definition for this transform.
-   *
-   * @return The {@link ConfigDef}.
-   */
   @Override
   public ConfigDef config() {
-    return CONFIG_DEF;
+    return Config.DEFINITION;
   }
 
-  /** Cleans up any resources used by the transform, such as the storage client. */
   @Override
   public void close() {
     if (storage != null) {

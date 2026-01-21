@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -38,14 +39,15 @@ class S3ClaimCheckSourceTransformIntegrationTest {
       new LocalStackContainer(LOCALSTACK_IMAGE).withServices(LocalStackContainer.Service.S3);
 
   private static final String TEST_CONFIG_STORAGE_TYPE = "s3";
-  private static final String TEST_CONFIG_THRESHOLD_BYTES = "10";
+  private static final String TEST_CONFIG_THRESHOLD_BYTES = "100";
   private static final String TEST_CONFIG_BUCKET_NAME = "test-bucket";
   private static final String TEST_TOPIC = "test-topic";
-  private static final String TEST_LARGE_PAYLOAD = "this is large payload !!!";
+  private static final String TEST_LARGE_PAYLOAD = "this is large payload this is large payload!!!";
   private static final String TEST_SMALL_PAYLOAD = "small";
 
   private static S3Client s3Client;
   private ClaimCheckSourceTransform transform;
+  private JsonConverter jsonConverter;
 
   @BeforeAll
   static void beforeAll() {
@@ -69,19 +71,22 @@ class S3ClaimCheckSourceTransformIntegrationTest {
   @BeforeEach
   void setUp() {
     transform = new ClaimCheckSourceTransform();
+    jsonConverter = new JsonConverter();
+    Map<String, Boolean> configs = Map.of("schema.enabled", true);
+    jsonConverter.configure(configs, false);
   }
 
   private Map<String, String> createTransformConfig() {
     return Map.of(
-        ClaimCheckSourceTransform.CONFIG_STORAGE_TYPE,
+        ClaimCheckSourceTransform.Config.STORAGE_TYPE,
         TEST_CONFIG_STORAGE_TYPE,
-        ClaimCheckSourceTransform.CONFIG_THRESHOLD_BYTES,
+        ClaimCheckSourceTransform.Config.THRESHOLD_BYTES,
         TEST_CONFIG_THRESHOLD_BYTES,
-        S3Storage.CONFIG_BUCKET_NAME,
+        S3Storage.Config.BUCKET_NAME,
         TEST_CONFIG_BUCKET_NAME,
-        S3Storage.CONFIG_REGION,
+        S3Storage.Config.REGION,
         localstack.getRegion(),
-        S3Storage.CONFIG_ENDPOINT_OVERRIDE,
+        S3Storage.Config.ENDPOINT_OVERRIDE,
         localstack.getEndpointOverride(LocalStackContainer.Service.S3).toString());
   }
 
@@ -93,6 +98,9 @@ class S3ClaimCheckSourceTransformIntegrationTest {
     byte[] largePayload = TEST_LARGE_PAYLOAD.getBytes(StandardCharsets.UTF_8);
     SourceRecord originalRecord =
         new SourceRecord(null, null, TEST_TOPIC, Schema.BYTES_SCHEMA, largePayload);
+    byte[] serializedPayload =
+        jsonConverter.fromConnectData(
+            originalRecord.topic(), originalRecord.valueSchema(), originalRecord.value());
 
     // When
     SourceRecord transformedRecord = transform.apply(originalRecord);
@@ -104,7 +112,7 @@ class S3ClaimCheckSourceTransformIntegrationTest {
 
     Struct transformedStruct = (Struct) transformedRecord.value();
     assertEquals(
-        largePayload.length,
+        serializedPayload.length,
         transformedStruct.getInt64(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES));
 
     String referenceUrl = transformedStruct.getString(ClaimCheckSchemaFields.REFERENCE_URL);
@@ -113,7 +121,7 @@ class S3ClaimCheckSourceTransformIntegrationTest {
         s3Client
             .getObject(GetObjectRequest.builder().bucket(TEST_CONFIG_BUCKET_NAME).key(key).build())
             .readAllBytes();
-    assertArrayEquals(largePayload, retrievedPayload);
+    assertArrayEquals(serializedPayload, retrievedPayload);
   }
 
   @Test
