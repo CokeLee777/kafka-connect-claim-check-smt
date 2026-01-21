@@ -40,21 +40,29 @@ public class JsonRecordSerializer implements RecordSerializer {
 
   @Override
   public byte[] serialize(SourceRecord record) {
-    String topic = record.topic();
-    Schema schema = record.valueSchema();
-    Object value = record.value();
-
-    if (value == null) {
+    if (record.value() == null) {
       return null;
     }
 
+    Schema schema = record.valueSchema();
     if (schema != null) {
-      try {
-        return schemaValueConverter.fromConnectData(topic, schema, value);
-      } catch (Exception e) {
-        throw new SerializationException("Failed to serialize value with schema", e);
-      }
+      return serializeWithSchema(record);
     }
+
+    return serializeWithSchemaless(record);
+  }
+
+  private byte[] serializeWithSchema(SourceRecord record) {
+    try {
+      return schemaValueConverter.fromConnectData(
+          record.topic(), record.valueSchema(), record.value());
+    } catch (Exception e) {
+      throw new SerializationException("Failed to serialize value with schema", e);
+    }
+  }
+
+  private byte[] serializeWithSchemaless(SourceRecord record) {
+    Object value = record.value();
 
     if (value instanceof byte[]) {
       return (byte[]) value;
@@ -65,14 +73,18 @@ public class JsonRecordSerializer implements RecordSerializer {
     }
 
     if (value instanceof Map) {
-      try {
-        return schemalessValueConverter.fromConnectData(topic, null, value);
-      } catch (Exception e) {
-        throw new SerializationException("Failed to serialize value without schema", e);
-      }
+      return serializeMap(record);
     }
 
     log.warn("Schemaless value of unsupported type: {}", value.getClass());
     return null;
+  }
+
+  private byte[] serializeMap(SourceRecord record) {
+    try {
+      return schemalessValueConverter.fromConnectData(record.topic(), null, record.value());
+    } catch (Exception e) {
+      throw new SerializationException("Failed to serialize value without schema", e);
+    }
   }
 }
