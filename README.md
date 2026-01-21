@@ -46,19 +46,18 @@ structured data using Kafka Connect's `Schema` and `Struct` API.
 
 **Tested and Verified:**
 
-| Connector              | Tested Version | Status     | Notes                                                                      |
-|------------------------|----------------|------------|----------------------------------------------------------------------------|
-| **Debezium MySQL CDC** | 2.1.4          | ✅ Verified | Fully tested with complex nested structures (before/after/source envelope) |
+| Connector                               | Tested Version | Status     | Notes                                                                      |
+|-----------------------------------------|----------------|------------|----------------------------------------------------------------------------|
+| **Debezium MySQL CDC Source Connector** | 2.1.4          | ✅ Verified | Tested with Debezium CDC envelope (before/after/source/op) and deeply nested schemas |
+| **Confluent JDBC Source Connector**     | 10.7.6         | ✅ Verified | Tested with complex nested Struct schemas (non-CDC, snapshot-based records) |
 
 **Expected to Work (Not Yet Tested):**
 
-| Connector                    | Expected Compatibility | Notes                                                       |
-|------------------------------|------------------------|-------------------------------------------------------------|
-| **Debezium PostgreSQL CDC**  | 2.x                    | Should work with similar CDC envelope structure             |
-| **Debezium SQL Server CDC**  | 2.x                    | Should work with similar CDC envelope structure             |
-| **Debezium Oracle CDC**      | 2.x                    | Should work with similar CDC envelope structure             |
-| **Confluent JDBC Source**    | 10.0+                  | Should work with flat Struct records                        |
-| **Custom Source Connectors** | Any                    | Must produce `org.apache.kafka.connect.data.Struct` records |
+| Connector                                    | Expected Compatibility | Notes                                                       |
+|----------------------------------------------|------------------------|-------------------------------------------------------------|
+| **Debezium PostgreSQL CDC Source Connector** | 2.x                    | Should work with similar CDC envelope structure             |
+| **Debezium Oracle CDC Source Connector**     | 2.x                    | Should work with similar CDC envelope structure             |
+| **Custom Source Connectors**                 | Any                    | Must produce `org.apache.kafka.connect.data.Struct` records |
 
 > **Note:** If you test this SMT with other connectors, please consider contributing your findings via GitHub issues or
 > pull requests!
