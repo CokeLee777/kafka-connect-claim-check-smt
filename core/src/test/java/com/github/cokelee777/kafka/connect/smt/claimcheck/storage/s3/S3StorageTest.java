@@ -1,10 +1,9 @@
-package com.github.cokelee777.kafka.connect.smt.claimcheck.storage;
+package com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3.S3Storage;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.HashMap;
