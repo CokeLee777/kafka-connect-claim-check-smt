@@ -9,10 +9,16 @@ public class ConfigUtils {
       return null;
     }
 
-    String trimmedPrefix = prefix.trim();
-    while (trimmedPrefix.endsWith("/")) {
-      trimmedPrefix = trimmedPrefix.substring(0, trimmedPrefix.length() - 1);
+    String normalizedPrefix = prefix.trim();
+    normalizedPrefix = normalizedPrefix.replaceAll("/+", "/");
+
+    while (normalizedPrefix.startsWith("/")) {
+      normalizedPrefix = normalizedPrefix.substring(1);
     }
-    return trimmedPrefix;
+
+    while (normalizedPrefix.endsWith("/")) {
+      normalizedPrefix = normalizedPrefix.substring(0, normalizedPrefix.length() - 1);
+    }
+    return normalizedPrefix;
   }
 }
