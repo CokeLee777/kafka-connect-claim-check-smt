@@ -4,8 +4,9 @@ reviews:
     enabled: true
     base_branches:
       - develop
-    ignored_branches:
-      - main
+    ignore_title_keywords:
+      - '[skip-review]'
+      - '[no-review]'
   request_changes_workflow: true
   high_level_summary_in_walkthrough: true
   fail_commit_status: true
