@@ -1,0 +1,43 @@
+ext {
+    testContainerVersion = '1.21.4'
+}
+
+dependencies {
+    // Core
+    testImplementation project(':core')
+
+    // Kafka Connect
+    testImplementation "org.apache.kafka:connect-api:${kafkaVersion}"
+    testImplementation "org.apache.kafka:connect-transforms:${kafkaVersion}"
+    testImplementation "org.apache.kafka:connect-json:${kafkaVersion}"
+    testImplementation "org.slf4j:slf4j-simple:${slf4jVersion}"
+
+    // AWS SDK
+    testImplementation platform("software.amazon.awssdk:bom:${awsSdkVersion}")
+    testImplementation "software.amazon.awssdk:s3"
+    testImplementation "software.amazon.awssdk:url-connection-client"
+
+    // JUnit
+    testImplementation platform("org.junit:junit-bom:${junitVersion}")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
+    // AssertJ
+    testImplementation "org.assertj:assertj-core:${assertjVersion}"
+
+    // TestContainers
+    testImplementation platform("org.testcontainers:testcontainers-bom:${testContainerVersion}")
+    testImplementation "org.testcontainers:testcontainers"
+    testImplementation "org.testcontainers:junit-jupiter"
+    testImplementation "org.testcontainers:localstack"
+}
+
+test {
+    useJUnitPlatform()
+    jvmArgs '-XX:+EnableDynamicAgentLoading'
+
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}

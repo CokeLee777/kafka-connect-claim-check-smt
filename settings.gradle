@@ -1,2 +1,4 @@
 rootProject.name = 'kafka-connect-smt-toolkit'
 
+include 'core'
+include 'integration-test'

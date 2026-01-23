@@ -28,5 +28,5 @@ jobs:
       - name: Build with Gradle
         run: |
           if [ -f build.gradle ] || [ -f build.gradle.kts ]; then
-            ./gradlew build || gradle build
+            ./gradlew :core:build || gradle :core:build
           fi

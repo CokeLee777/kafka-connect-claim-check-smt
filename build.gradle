@@ -1,148 +1,28 @@
-plugins {
-    id 'java'
-    id 'com.gradleup.shadow' version '9.0.0'
-    id 'maven-publish'
-}
+subprojects {
+    apply plugin: 'java'
 
-group = 'com.github.cokelee777'
-version = '0.3.0'
+    group = 'com.github.cokelee777'
+    version = '0.4.0'
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
-}
-
-repositories {
-    mavenCentral()
-}
-
-ext {
-    kafkaVersion = '3.8.1'
-    slf4jVersion = '2.0.17'
-    awsSdkVersion = '2.41.8'
-
-    junitVersion = '5.14.2'
-    mockitoVersion = '5.21.0'
-    testContainerVersion = '1.21.4'
-}
-
-dependencies {
-    compileOnly "org.apache.kafka:connect-api:${kafkaVersion}"
-    compileOnly "org.apache.kafka:connect-transforms:${kafkaVersion}"
-    compileOnly "org.apache.kafka:connect-json:${kafkaVersion}"
-    compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
-
-    implementation platform("software.amazon.awssdk:bom:${awsSdkVersion}")
-    implementation "software.amazon.awssdk:s3"
-    implementation "software.amazon.awssdk:url-connection-client"
-
-    testImplementation "org.apache.kafka:connect-api:${kafkaVersion}"
-    testImplementation "org.apache.kafka:connect-transforms:${kafkaVersion}"
-    testImplementation "org.apache.kafka:connect-json:${kafkaVersion}"
-    testImplementation "org.slf4j:slf4j-simple:${slf4jVersion}"
-
-    testImplementation platform("org.junit:junit-bom:${junitVersion}")
-    testImplementation "org.junit.jupiter:junit-jupiter"
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
-
-    testImplementation platform("org.mockito:mockito-bom:${mockitoVersion}")
-    testImplementation "org.mockito:mockito-core"
-    testImplementation "org.mockito:mockito-junit-jupiter"
-
-    testImplementation platform("org.testcontainers:testcontainers-bom:${testContainerVersion}")
-    testImplementation "org.testcontainers:testcontainers"
-    testImplementation "org.testcontainers:junit-jupiter"
-    testImplementation "org.testcontainers:localstack"
-}
-
-sourceSets {
-    integrationTest {
-        java {
-            srcDir 'src/integrationTest/java'
-        }
-        resources {
-            srcDir 'src/integrationTest/resources'
-        }
-        compileClasspath += main.output + test.output
-        runtimeClasspath += main.output + test.output
-    }
-}
-
-test {
-    useJUnitPlatform()
-
-    testLogging {
-        events "passed", "skipped", "failed"
-        exceptionFormat "full"
-    }
-}
-
-tasks.register('integrationTest', Test) {
-    description = 'Runs integration tests.'
-    group = 'verification'
-
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
-
-    useJUnitPlatform()
-    jvmArgs '-XX:+EnableDynamicAgentLoading'
-
-    shouldRunAfter test
-
-    testLogging {
-        events "passed", "skipped", "failed"
-        exceptionFormat "full"
-    }
-}
-
-configurations {
-    integrationTestImplementation.extendsFrom testImplementation
-    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
-}
-
-shadowJar {
-    doFirst {
-        def destDir = destinationDirectory.get().asFile
-        if (destDir.exists()) {
-            delete destDir
-        }
-        destDir.mkdirs()
-    }
-    archiveClassifier.set('')
-    destinationDirectory = layout.buildDirectory.dir("libs/kafka-connect-smt-toolkit").get().asFile
-
-    dependencies {
-        exclude(dependency("org.apache.kafka:.*"))
-        exclude(dependency("org.slf4j:.*"))
+    java {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
-    // 충돌 방지를 위한 패키지 재배치 (Relocation)
-    relocate 'software.amazon.awssdk', 'com.github.cokelee777.shadow.awssdk'
-
-    mergeServiceFiles()
-}
-
-publishing {
-    publications {
-        gpr(MavenPublication) {
-            artifact shadowJar
-
-            groupId = group
-            artifactId = 'kafka-connect-smt-toolkit'
-            version = version
-        }
-    }
-
-    // 배포할 저장소 위치 (GitHub Packages)
     repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/cokelee777/kafka-connect-smt-toolkit")
+        mavenCentral()
+    }
 
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
-            }
-        }
+    ext {
+        kafkaVersion = '3.8.1'
+        slf4jVersion = '2.0.17'
+        awsSdkVersion = '2.41.8'
+
+        junitVersion = '5.14.2'
+        mockitoVersion = '5.21.0'
+        assertjVersion = '3.27.6'
     }
 }
+
+// 루트 프로젝트는 빌드하지 않음
+tasks.maybeCreate('build').enabled = false
