@@ -57,8 +57,29 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
   public ClaimCheckSourceTransform() {}
 
+  public ClaimCheckSourceTransform(ClaimCheckStorage storage) {
+    this.storage = storage;
+  }
+
+  public ClaimCheckSourceTransform(RecordSerializer recordSerializer) {
+    this.recordSerializer = recordSerializer;
+  }
+
+  public ClaimCheckSourceTransform(ClaimCheckStorage storage, RecordSerializer recordSerializer) {
+    this.storage = storage;
+    this.recordSerializer = recordSerializer;
+  }
+
   public ClaimCheckStorage getStorage() {
     return this.storage;
+  }
+
+  public String getStorageType() {
+    return storageType;
+  }
+
+  public RecordSerializer getRecordSerializer() {
+    return recordSerializer;
   }
 
   public int getThresholdBytes() {
@@ -72,10 +93,14 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
     this.thresholdBytes = config.getInt(Config.THRESHOLD_BYTES);
     this.storageType = config.getString(Config.STORAGE_TYPE);
 
-    this.storage = ClaimCheckStorageFactory.create(this.storageType);
-    this.storage.configure(configs);
+    if (this.storage == null) {
+      this.storage = ClaimCheckStorageFactory.create(this.storageType);
+      this.storage.configure(configs);
+    }
 
-    this.recordSerializer = RecordSerializerFactory.create();
+    if (this.recordSerializer == null) {
+      this.recordSerializer = RecordSerializerFactory.create();
+    }
   }
 
   @Override
