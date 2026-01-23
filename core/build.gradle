@@ -61,7 +61,7 @@ shadowJar {
     archiveBaseName.set("kafka-connect-smt-toolkit")
     archiveVersion.set(project.version.toString())
     archiveClassifier.set('')
-    destinationDirectory = layout.buildDirectory.dir("libs/kafka-connect-smt-toolkit").get().asFile
+    destinationDirectory.set(layout.buildDirectory.dir("libs/kafka-connect-smt-toolkit").get().asFile)
 
     dependencies {
         exclude(dependency("org.apache.kafka:.*"))
