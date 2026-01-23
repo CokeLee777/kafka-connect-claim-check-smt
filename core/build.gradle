@@ -1,4 +1,5 @@
 plugins {
+    id 'java'
     id 'com.gradleup.shadow' version '9.0.0'
     id 'maven-publish'
 }
@@ -56,6 +57,9 @@ shadowJar {
         }
         destDir.mkdirs()
     }
+
+    archiveBaseName.set("kafka-connect-smt-toolkit")
+    archiveVersion.set(project.version.toString())
     archiveClassifier.set('')
     destinationDirectory = layout.buildDirectory.dir("libs/kafka-connect-smt-toolkit").get().asFile
 
@@ -66,7 +70,6 @@ shadowJar {
 
     // 충돌 방지를 위한 패키지 재배치 (Relocation)
     relocate 'software.amazon.awssdk', 'com.github.cokelee777.shadow.awssdk'
-
     mergeServiceFiles()
 }
 
