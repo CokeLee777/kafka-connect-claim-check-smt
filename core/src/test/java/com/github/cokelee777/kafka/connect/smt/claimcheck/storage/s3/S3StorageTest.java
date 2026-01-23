@@ -152,14 +152,13 @@ class S3StorageTest {
     }
 
     @Test
-    @DisplayName("S3Client가 null이어도 예외가 발생하지 않고, s3Client.close() 메서드가 호출되지 않는다.")
+    @DisplayName("S3Client가 null이어도 예외가 발생하지 않는다.")
     void notCauseExceptionAndCloseWhenS3ClientIsNull() {
       // Given
       s3Storage = new S3Storage();
 
       // When & Then
       assertDoesNotThrow(() -> s3Storage.close());
-      verify(s3Client, never()).close();
     }
   }
 }

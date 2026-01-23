@@ -142,14 +142,13 @@ class ClaimCheckSourceTransformTest {
     }
 
     @Test
-    @DisplayName("ClaimCheckStorage가 null이어도 예외가 발생하지 않고, storage.close() 메서드가 호출되지 않는다.")
+    @DisplayName("ClaimCheckStorage가 null이어도 예외가 발생하지 않는다.")
     void notCauseExceptionAndCloseWhenClaimCheckStorageIsNull() {
       // Given
       transform = new ClaimCheckSourceTransform();
 
       // When & Then
       assertDoesNotThrow(() -> transform.close());
-      verify(storage, never()).close();
     }
   }
 }
