@@ -10,6 +10,8 @@ public interface ClaimCheckStorage extends AutoCloseable {
 
   String store(byte[] payload);
 
+  byte[] retrieve(String referenceUrl);
+
   @Override
   void close();
 }

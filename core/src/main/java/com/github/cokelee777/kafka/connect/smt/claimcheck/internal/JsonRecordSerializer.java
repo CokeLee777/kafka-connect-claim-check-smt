@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -53,10 +54,6 @@ public class JsonRecordSerializer implements RecordSerializer {
 
   @Override
   public byte[] serialize(SourceRecord record) {
-    if (record.value() == null) {
-      return null;
-    }
-
     Schema schema = record.valueSchema();
     if (schema != null) {
       return serializeWithSchema(record);
@@ -70,7 +67,7 @@ public class JsonRecordSerializer implements RecordSerializer {
       return schemaValueConverter.fromConnectData(
           record.topic(), record.valueSchema(), record.value());
     } catch (Exception e) {
-      throw new SerializationException("Failed to serialize value with schema", e);
+      throw new SerializationException("Failed to serialize schema-based record value", e);
     }
   }
 
@@ -85,11 +82,14 @@ public class JsonRecordSerializer implements RecordSerializer {
       return ((String) value).getBytes(StandardCharsets.UTF_8);
     }
 
-    if (value instanceof Map) {
+    if (value instanceof Map<?, ?>) {
       return serializeMap(record);
     }
 
-    log.warn("Schemaless value of unsupported type: {}", value.getClass());
+    log.warn(
+        "Schemaless record value of unsupported type (topic={}, type={}). Record will be skipped.",
+        record.topic(),
+        value != null ? value.getClass().getName() : "null");
     return null;
   }
 
@@ -97,7 +97,30 @@ public class JsonRecordSerializer implements RecordSerializer {
     try {
       return schemalessValueConverter.fromConnectData(record.topic(), null, record.value());
     } catch (Exception e) {
-      throw new SerializationException("Failed to serialize value without schema", e);
+      throw new SerializationException("Failed to serialize schemaless record value", e);
+    }
+  }
+
+  @Override
+  public SchemaAndValue deserialize(String topic, byte[] payload) {
+    try {
+      return schemaValueConverter.toConnectData(topic, payload);
+    } catch (Exception schemaException) {
+      return deserializeSchemaless(topic, payload, schemaException);
+    }
+  }
+
+  private SchemaAndValue deserializeSchemaless(
+      String topic, byte[] payload, Exception schemaException) {
+    try {
+      return schemalessValueConverter.toConnectData(topic, payload);
+    } catch (Exception schemalessException) {
+      log.warn(
+          "Failed to deserialize record value (topic={}). Record will be skipped.",
+          topic,
+          schemaException);
+      log.debug("Schemaless deserialization failure", schemalessException);
+      return null;
     }
   }
 }
