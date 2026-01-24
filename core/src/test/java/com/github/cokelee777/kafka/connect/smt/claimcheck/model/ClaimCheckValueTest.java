@@ -10,7 +10,7 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @DisplayName("ClaimCheckReference 단위 테스트")
-class ClaimCheckReferenceTest {
+class ClaimCheckValueTest {
 
   @Nested
   @DisplayName("create 메서드 테스트")
@@ -24,13 +24,13 @@ class ClaimCheckReferenceTest {
       long originalSizeBytes = 1024 * 1024;
 
       // When
-      ClaimCheckReference claimCheckReference =
-          ClaimCheckReference.create(referenceUrl, originalSizeBytes);
+      ClaimCheckValue claimCheckValue =
+          ClaimCheckValue.create(referenceUrl, originalSizeBytes);
 
       // Then
-      assertThat(claimCheckReference).isNotNull();
-      assertThat(claimCheckReference.getReferenceUrl()).isEqualTo(referenceUrl);
-      assertThat(claimCheckReference.getOriginalSizeBytes()).isEqualTo(originalSizeBytes);
+      assertThat(claimCheckValue).isNotNull();
+      assertThat(claimCheckValue.getReferenceUrl()).isEqualTo(referenceUrl);
+      assertThat(claimCheckValue.getOriginalSizeBytes()).isEqualTo(originalSizeBytes);
     }
 
     @ParameterizedTest
@@ -42,7 +42,7 @@ class ClaimCheckReferenceTest {
 
       // When & Then
       assertThatExceptionOfType(IllegalArgumentException.class)
-          .isThrownBy(() -> ClaimCheckReference.create(referenceUrl, originalSizeBytes))
+          .isThrownBy(() -> ClaimCheckValue.create(referenceUrl, originalSizeBytes))
           .withMessage("referenceUrl must be non-blank");
     }
 
@@ -54,7 +54,7 @@ class ClaimCheckReferenceTest {
 
       // When & Then
       assertThatExceptionOfType(IllegalArgumentException.class)
-          .isThrownBy(() -> ClaimCheckReference.create(referenceUrl, originalSizeBytes))
+          .isThrownBy(() -> ClaimCheckValue.create(referenceUrl, originalSizeBytes))
           .withMessage("originalSizeBytes must be >= 0");
     }
   }

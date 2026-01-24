@@ -3,13 +3,13 @@ package com.github.cokelee777.kafka.connect.smt.claimcheck.model;
 import java.time.Instant;
 import org.apache.kafka.connect.data.Struct;
 
-public class ClaimCheckReference {
+public class ClaimCheckValue {
 
   private final String referenceUrl;
   private final long originalSizeBytes;
   private final long uploadedAt;
 
-  private ClaimCheckReference(String referenceUrl, long originalSizeBytes, long uploadedAt) {
+  private ClaimCheckValue(String referenceUrl, long originalSizeBytes, long uploadedAt) {
     this.referenceUrl = referenceUrl;
     this.originalSizeBytes = originalSizeBytes;
     this.uploadedAt = uploadedAt;
@@ -23,7 +23,7 @@ public class ClaimCheckReference {
     return originalSizeBytes;
   }
 
-  public static ClaimCheckReference create(String referenceUrl, long originalSizeBytes) {
+  public static ClaimCheckValue create(String referenceUrl, long originalSizeBytes) {
     if (referenceUrl == null || referenceUrl.isBlank()) {
       throw new IllegalArgumentException("referenceUrl must be non-blank");
     }
@@ -32,7 +32,7 @@ public class ClaimCheckReference {
       throw new IllegalArgumentException("originalSizeBytes must be >= 0");
     }
 
-    return new ClaimCheckReference(referenceUrl, originalSizeBytes, Instant.now().toEpochMilli());
+    return new ClaimCheckValue(referenceUrl, originalSizeBytes, Instant.now().toEpochMilli());
   }
 
   public Struct toStruct() {
