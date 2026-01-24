@@ -12,7 +12,7 @@ public class ClaimCheckStorageFactory {
   private static final Map<String, Supplier<ClaimCheckStorage>> STORAGE_MAP = new HashMap<>();
 
   static {
-    register(StorageType.S3.type(), S3Storage::new);
+    register(ClaimCheckStorageType.S3.type(), S3Storage::new);
   }
 
   private static void register(String type, Supplier<ClaimCheckStorage> supplier) {

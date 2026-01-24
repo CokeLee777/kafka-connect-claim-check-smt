@@ -23,7 +23,7 @@ public class ClaimCheckStorageFactoryTest {
     @DisplayName("올바른 Type을 인자로 넘겨주면 ClaimCheckStorage 객체를 생성한다.")
     public void rightType() {
       // Given
-      String type = StorageType.S3.type();
+      String type = ClaimCheckStorageType.S3.type();
 
       // When
       ClaimCheckStorage claimCheckStorage = ClaimCheckStorageFactory.create(type);

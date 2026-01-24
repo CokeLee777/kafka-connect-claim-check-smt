@@ -7,7 +7,7 @@ import static org.mockito.Mockito.*;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchemaFields;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorage;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.StorageType;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3.S3Storage;
 import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
@@ -40,7 +40,7 @@ class ClaimCheckSourceTransformTest {
       Map<String, String> configs =
           Map.of(
               ClaimCheckSourceTransform.Config.STORAGE_TYPE,
-              StorageType.S3.type(),
+              ClaimCheckStorageType.S3.type(),
               ClaimCheckSourceTransform.Config.THRESHOLD_BYTES,
               "1024",
               S3Storage.Config.BUCKET_NAME,
@@ -60,7 +60,7 @@ class ClaimCheckSourceTransformTest {
       transform.configure(configs);
 
       // Then
-      assertThat(transform.getStorageType()).isEqualTo(StorageType.S3.type());
+      assertThat(transform.getStorageType()).isEqualTo(ClaimCheckStorageType.S3.type());
       assertThat(transform.getThresholdBytes()).isEqualTo(1024);
       assertThat(transform.getStorage()).isNotNull();
       assertThat(transform.getRecordSerializer()).isNotNull();
@@ -76,7 +76,7 @@ class ClaimCheckSourceTransformTest {
       Map<String, String> configs =
           Map.of(
               ClaimCheckSourceTransform.Config.STORAGE_TYPE,
-              StorageType.S3.type(),
+              ClaimCheckStorageType.S3.type(),
               ClaimCheckSourceTransform.Config.THRESHOLD_BYTES,
               "1",
               S3Storage.Config.BUCKET_NAME,

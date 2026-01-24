@@ -1,7 +1,7 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3;
 
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorage;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.StorageType;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import com.github.cokelee777.kafka.connect.smt.common.utils.PathUtils;
 import java.io.IOException;
 import java.util.Map;
@@ -111,7 +111,7 @@ public class S3Storage implements ClaimCheckStorage {
 
   @Override
   public String type() {
-    return StorageType.S3.type();
+    return ClaimCheckStorageType.S3.type();
   }
 
   @Override
