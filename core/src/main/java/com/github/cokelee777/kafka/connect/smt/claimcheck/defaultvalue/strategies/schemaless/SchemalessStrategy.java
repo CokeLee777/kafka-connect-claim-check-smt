@@ -28,7 +28,7 @@ public class SchemalessStrategy implements DefaultValueStrategy {
   }
 
   @Override
-  public Struct createDefaultValue(SourceRecord record) {
+  public Object createDefaultValue(SourceRecord record) {
     if (!canHandle(record)) {
       throw new IllegalArgumentException(
           "Cannot handle record with non-null schema. Expected schemaless record.");

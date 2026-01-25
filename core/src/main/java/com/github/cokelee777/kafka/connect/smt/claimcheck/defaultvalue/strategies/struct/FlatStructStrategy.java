@@ -35,7 +35,7 @@ public class FlatStructStrategy implements DefaultValueStrategy {
   }
 
   @Override
-  public Struct createDefaultValue(SourceRecord record) {
+  public Object createDefaultValue(SourceRecord record) {
     if (!canHandle(record)) {
       throw new IllegalArgumentException(
           String.format(
