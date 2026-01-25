@@ -47,16 +47,12 @@ public class DefaultValueStrategySelector {
     Schema schema = record.valueSchema();
     for (DefaultValueStrategy strategy : strategies) {
       if (strategy.canHandle(record)) {
-        log.debug(
-            "Selected strategy type: {} for schema: {}",
-            strategy.getStrategyType(),
-            schema.name());
+        log.debug("Selected strategy type: {} for schema: {}", strategy.getStrategyType(), schema);
         return strategy;
       }
     }
 
     throw new IllegalStateException(
-        "No strategy found for schema: " + schema.name() + ", schema type: " + schema.type()
-    );
+        "No strategy found for schema: " + schema.name() + ", schema type: " + schema.type());
   }
 }
