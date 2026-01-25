@@ -5,7 +5,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 public final class ClaimCheckSchema {
 
-  public static final String NAME = ClaimCheckSchema.class.getName();
+  public static final String NAME = "smt-toolkit-claim-check-reference";
 
   public static final Schema SCHEMA =
       SchemaBuilder.struct()
