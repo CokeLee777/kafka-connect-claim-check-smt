@@ -215,6 +215,29 @@ class ClaimCheckSourceTransformTest {
       assertThat(claimCheckHeader.key()).isEqualTo(ClaimCheckSchema.NAME);
       assertThat(claimCheckHeader.schema()).isEqualTo(ClaimCheckSchema.SCHEMA);
     }
+
+    @Test
+    @DisplayName("지원하지 않는 Schema SourceRecord를 인자로 넣으면 예외가 발생한다.")
+    void unsupportedSchemaSourceRecordReturnClaimCheckRecord() {
+      // Given
+      String referenceUrl = "s3://test-bucket/test/path/uuid";
+      when(storage.store(any())).thenReturn(referenceUrl);
+
+      Schema valueSchema = Schema.STRING_SCHEMA;
+      String value = "{\"id\":1,\"name\":\"cokelee777\"}";
+      SourceRecord record =
+          new SourceRecord(
+              null, null, "test-topic", Schema.BYTES_SCHEMA, "key", valueSchema, value);
+
+      // When & Then
+      assertThatExceptionOfType(IllegalStateException.class)
+          .isThrownBy(() -> transform.apply(record))
+          .withMessage(
+              "No strategy found for schema: "
+                  + valueSchema
+                  + ", schema type: "
+                  + valueSchema.type());
+    }
   }
 
   @Nested
