@@ -52,7 +52,6 @@ public class DefaultValueStrategySelector {
       }
     }
 
-    throw new IllegalStateException(
-        "No strategy found for schema: " + schema + ", schema type: " + schema.type());
+    throw new IllegalStateException("No strategy found for schema: " + schema);
   }
 }
