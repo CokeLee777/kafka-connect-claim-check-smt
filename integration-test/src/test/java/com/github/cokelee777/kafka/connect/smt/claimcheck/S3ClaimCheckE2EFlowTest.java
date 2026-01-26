@@ -27,9 +27,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @Testcontainers
 @DisplayName("Claim Check SMT E2E 통합 테스트")
@@ -383,7 +385,7 @@ class S3ClaimCheckE2EFlowTest {
     assertThat(transformedSourceRecord.valueSchema()).isEqualTo(initialSourceRecord.valueSchema());
     assertThat(transformedSourceRecord.value()).isNotNull();
     assertThat(transformedSourceRecord.value()).isInstanceOf(Struct.class);
-    assertThat(transformedSourceRecord.value()).isNotEqualTo(initialSourceRecord);
+    assertThat(transformedSourceRecord.value()).isNotEqualTo(initialSourceRecord.value());
 
     // GenericStructStrategy 적용되어 모든 필드가 기본값으로 설정됨
     assertThat(((Struct) transformedSourceRecord.value()).getInt64("id")).isEqualTo(0L);
@@ -408,12 +410,13 @@ class S3ClaimCheckE2EFlowTest {
 
     // S3에 실제 데이터가 저장되었는지 확인
     String key = referenceUrl.substring(("s3://" + BUCKET_NAME + "/").length());
-    byte[] serializedRecord =
-        s3Client
-            .getObject(GetObjectRequest.builder().bucket(BUCKET_NAME).key(key).build())
-            .readAllBytes();
-    assertThat(serializedRecord).isNotEmpty();
-    assertThat(serializedRecord.length).isEqualTo(originalSizeBytes);
+    try (ResponseInputStream<GetObjectResponse> s3Object =
+        s3Client.getObject(GetObjectRequest.builder().bucket(BUCKET_NAME).key(key).build())) {
+      byte[] serializedRecord = s3Object.readAllBytes();
+      assertThat(serializedRecord).isNotEmpty();
+      assertThat(serializedRecord.length).isEqualTo(originalSizeBytes);
+    }
+
     return transformedSourceHeader;
   }
 
