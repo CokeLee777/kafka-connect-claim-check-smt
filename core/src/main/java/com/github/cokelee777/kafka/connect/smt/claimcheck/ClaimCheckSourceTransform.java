@@ -122,36 +122,57 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
       return record;
     }
 
-    byte[] serializedRecord = this.recordSerializer.serialize(record);
-    if (serializedRecord == null || serializedRecord.length <= this.thresholdBytes) {
+    byte[] originalRecordBytes = serializeRecord(record);
+    if (originalRecordBytes == null || originalRecordBytes.length <= this.thresholdBytes) {
       log.debug(
           "Record size {} below threshold {}, skipping claim check",
-          serializedRecord != null ? serializedRecord.length : 0,
+          originalRecordBytes != null ? originalRecordBytes.length : 0,
           this.thresholdBytes);
       return record;
     }
 
     log.debug(
         "Record size {} exceeds threshold {}, applying claim check",
-        serializedRecord.length,
+        originalRecordBytes.length,
         this.thresholdBytes);
-    return createClaimCheckRecord(record, serializedRecord);
+    return createClaimCheckRecord(record, originalRecordBytes);
   }
 
-  private SourceRecord createClaimCheckRecord(SourceRecord record, byte[] serializedRecord) {
-    String referenceUrl = this.storage.store(serializedRecord);
-    Struct referenceValue =
-        ClaimCheckValue.create(referenceUrl, serializedRecord.length).toStruct();
+  private byte[] serializeRecord(SourceRecord record) {
+    return this.recordSerializer.serialize(record);
+  }
 
-    DefaultValueStrategy defaultValueStrategy =
-        this.defaultValueStrategySelector.selectStrategy(record);
+  private SourceRecord createClaimCheckRecord(SourceRecord record, byte[] originalRecordBytes) {
+    String referenceUrl = storeOriginalRecord(originalRecordBytes);
+    Struct claimCheckValue = createClaimCheckValue(referenceUrl, originalRecordBytes.length);
+    Object defaultValue = createDefaultValue(record);
+    return buildClaimCheckRecord(record, claimCheckValue, defaultValue);
+  }
 
-    log.info(
-        "Applying Claim Check with strategy: '{}' for topic: '{}'",
-        defaultValueStrategy.getStrategyType(),
+  private String storeOriginalRecord(byte[] originalRecordBytes) {
+    String referenceUrl = this.storage.store(originalRecordBytes);
+    log.debug(
+        "Stored original record. Size: {} bytes, Reference URL: {}",
+        originalRecordBytes.length,
+        referenceUrl);
+    return referenceUrl;
+  }
+
+  private Struct createClaimCheckValue(String referenceUrl, int originalSizeBytes) {
+    return ClaimCheckValue.create(referenceUrl, originalSizeBytes).toStruct();
+  }
+
+  private Object createDefaultValue(SourceRecord record) {
+    DefaultValueStrategy strategy = this.defaultValueStrategySelector.selectStrategy(record);
+    log.debug(
+        "Applying default value with strategy: '{}' for topic: '{}'",
+        strategy.getStrategyType(),
         record.topic());
+    return strategy.createDefaultValue(record);
+  }
 
-    Object defaultValue = defaultValueStrategy.createDefaultValue(record);
+  private SourceRecord buildClaimCheckRecord(
+      SourceRecord record, Struct claimCheckValue, Object defaultValue) {
     SourceRecord sourceRecord =
         record.newRecord(
             record.topic(),
@@ -162,12 +183,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
             defaultValue,
             record.timestamp());
 
-    log.debug(
-        "Created claim check record. Original size: {} bytes, Reference URL: {}",
-        serializedRecord.length,
-        referenceUrl);
-
-    sourceRecord.headers().add(ClaimCheckSchema.NAME, referenceValue, ClaimCheckSchema.SCHEMA);
+    sourceRecord.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
     return sourceRecord;
   }
 

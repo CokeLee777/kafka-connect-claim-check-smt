@@ -1,7 +1,5 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorage;
@@ -14,7 +12,6 @@ import java.util.Objects;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.SchemaAndValue;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -25,7 +22,6 @@ import org.slf4j.LoggerFactory;
 public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
 
   private static final Logger log = LoggerFactory.getLogger(ClaimCheckSinkTransform.class);
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   public static class Config {
 
@@ -106,16 +102,33 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
     }
 
     Header claimCheckHeader = record.headers().lastWithName(ClaimCheckSchema.NAME);
-    if (claimCheckHeader == null) {
-      log.debug("No claim-check header found for record from topic: {}", record.topic());
+    if (claimCheckHeader == null || claimCheckHeader.value() == null) {
+      log.debug("No claim-check header or value found for record from topic: {}", record.topic());
       return record;
     }
 
-    return createOriginalRecord(record, claimCheckHeader);
+    return restoreOriginalRecord(record, claimCheckHeader.value());
   }
 
-  private SinkRecord createOriginalRecord(SinkRecord record, Header claimCheckHeader) {
-    ClaimCheckValue claimCheckValue = extractReference(claimCheckHeader);
+  private SinkRecord restoreOriginalRecord(SinkRecord record, Object headerValue) {
+    ClaimCheckValue claimCheckValue = parseClaimCheckValue(headerValue);
+    byte[] originalRecordBytes = retrieveOriginalRecord(claimCheckValue);
+    SchemaAndValue schemaAndValue = deserializeRecord(record.topic(), originalRecordBytes);
+    if (schemaAndValue == null) {
+      log.warn(
+          "Failed to restore original record from claim check reference (topic={}). Returning default value record.",
+          record.topic());
+      return record;
+    }
+
+    return buildRestoredRecord(record, schemaAndValue);
+  }
+
+  private ClaimCheckValue parseClaimCheckValue(Object headerValue) {
+    return ClaimCheckValue.from(headerValue);
+  }
+
+  private byte[] retrieveOriginalRecord(ClaimCheckValue claimCheckValue) {
     String referenceUrl = claimCheckValue.getReferenceUrl();
     long originalSizeBytes = claimCheckValue.getOriginalSizeBytes();
 
@@ -124,27 +137,30 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
         referenceUrl,
         originalSizeBytes);
 
-    byte[] serializedRecord = this.storage.retrieve(referenceUrl);
-    if (serializedRecord == null || serializedRecord.length == 0) {
+    byte[] originalRecordBytes = this.storage.retrieve(referenceUrl);
+    validateRetrievedPayload(originalRecordBytes, referenceUrl, originalSizeBytes);
+    return originalRecordBytes;
+  }
+
+  private void validateRetrievedPayload(
+      byte[] originalRecordBytes, String referenceUrl, long originalSizeBytes) {
+    if (originalRecordBytes == null || originalRecordBytes.length == 0) {
       throw new ConnectException("Failed to retrieve data from: " + referenceUrl);
     }
 
-    if (serializedRecord.length != originalSizeBytes) {
+    if (originalRecordBytes.length != originalSizeBytes) {
       log.warn(
-          "Size mismatch! Expected: {} bytes, Retrieved: {} bytes",
+          "Size mismatch! OriginalSizeBytes: {} bytes, Retrieved: {} bytes",
           originalSizeBytes,
-          serializedRecord.length);
+          originalRecordBytes.length);
     }
+  }
 
-    SchemaAndValue schemaAndValue =
-        this.recordSerializer.deserialize(record.topic(), serializedRecord);
-    if (schemaAndValue == null) {
-      log.warn(
-          "Failed to restore original record from claim check reference (topic={}). Returning default value record.",
-          record.topic());
-      return record;
-    }
+  private SchemaAndValue deserializeRecord(String topic, byte[] originalRecordBytes) {
+    return this.recordSerializer.deserialize(topic, originalRecordBytes);
+  }
 
+  private SinkRecord buildRestoredRecord(SinkRecord record, SchemaAndValue schemaAndValue) {
     SinkRecord originalRecord =
         record.newRecord(
             record.topic(),
@@ -155,52 +171,10 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
             schemaAndValue.value(),
             record.timestamp());
 
-    log.debug("Successfully recovered claim check record. Size: {} bytes", serializedRecord.length);
+    log.debug("Successfully recovered claim check record.");
 
     originalRecord.headers().remove(ClaimCheckSchema.NAME);
     return originalRecord;
-  }
-
-  private ClaimCheckValue extractReference(Header header) {
-    Object value = header.value();
-    if (value instanceof Struct) {
-      return parseFromStruct((Struct) value);
-    }
-
-    if (value instanceof String) {
-      return parseFromJson((String) value);
-    }
-
-    if (value instanceof Map) {
-      return parseFromMap((Map<?, ?>) value);
-    }
-
-    throw new ConnectException("Unsupported claim check header type: " + value.getClass());
-  }
-
-  private ClaimCheckValue parseFromStruct(Struct struct) {
-    try {
-      return ClaimCheckValue.from(struct);
-    } catch (Exception e) {
-      throw new ConnectException("Failed to parse claim check header STRUCT", e);
-    }
-  }
-
-  private ClaimCheckValue parseFromJson(String json) {
-    try {
-      JsonNode node = OBJECT_MAPPER.readTree(json);
-      return ClaimCheckValue.from(node);
-    } catch (Exception e) {
-      throw new ConnectException("Failed to parse claim check header JSON", e);
-    }
-  }
-
-  private ClaimCheckValue parseFromMap(Map<?, ?> map) {
-    try {
-      return ClaimCheckValue.from(map);
-    } catch (Exception e) {
-      throw new ConnectException("Failed to parse claim check header map", e);
-    }
   }
 
   @Override
