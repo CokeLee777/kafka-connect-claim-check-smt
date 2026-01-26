@@ -134,11 +134,10 @@ public class S3Storage implements ClaimCheckStorage {
     checkClientInitialized();
 
     String key = generateUniqueKey();
+    PutObjectRequest putObjectRequest =
+        PutObjectRequest.builder().bucket(this.bucketName).key(key).build();
     try {
-      PutObjectRequest putObjectRequest =
-          PutObjectRequest.builder().bucket(this.bucketName).key(key).build();
       this.s3Client.putObject(putObjectRequest, RequestBody.fromBytes(payload));
-
       return buildReferenceUrl(key);
     } catch (S3Exception e) {
       throw new RuntimeException(
@@ -159,10 +158,10 @@ public class S3Storage implements ClaimCheckStorage {
     checkClientInitialized();
 
     String key = parseKeyFrom(referenceUrl);
-    try {
-      GetObjectRequest getObjectRequest =
-          GetObjectRequest.builder().bucket(this.bucketName).key(key).build();
-      ResponseInputStream<GetObjectResponse> s3Object = this.s3Client.getObject(getObjectRequest);
+    GetObjectRequest getObjectRequest =
+        GetObjectRequest.builder().bucket(this.bucketName).key(key).build();
+    try (ResponseInputStream<GetObjectResponse> s3Object =
+        this.s3Client.getObject(getObjectRequest)) {
       return s3Object.readAllBytes();
     } catch (S3Exception | IOException e) {
       throw new RuntimeException(
