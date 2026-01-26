@@ -7,6 +7,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
+/** Value object representing claim check metadata stored in record headers. */
 public class ClaimCheckValue {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -21,14 +22,23 @@ public class ClaimCheckValue {
     this.uploadedAt = uploadedAt;
   }
 
+  /** Returns the external storage reference URL. */
   public String getReferenceUrl() {
     return referenceUrl;
   }
 
+  /** Returns the original payload size in bytes. */
   public long getOriginalSizeBytes() {
     return originalSizeBytes;
   }
 
+  /**
+   * Creates a new ClaimCheckValue with the current timestamp.
+   *
+   * @param referenceUrl the external storage reference URL
+   * @param originalSizeBytes the original payload size in bytes
+   * @return a new ClaimCheckValue instance
+   */
   public static ClaimCheckValue create(String referenceUrl, long originalSizeBytes) {
     if (referenceUrl == null || referenceUrl.isBlank()) {
       throw new IllegalArgumentException("referenceUrl must be non-blank");
@@ -41,6 +51,7 @@ public class ClaimCheckValue {
     return new ClaimCheckValue(referenceUrl, originalSizeBytes, Instant.now().toEpochMilli());
   }
 
+  /** Converts this value to a Kafka Connect Struct. */
   public Struct toStruct() {
     return new Struct(ClaimCheckSchema.SCHEMA)
         .put(ClaimCheckSchemaFields.REFERENCE_URL, referenceUrl)
@@ -48,6 +59,13 @@ public class ClaimCheckValue {
         .put(ClaimCheckSchemaFields.UPLOADED_AT, uploadedAt);
   }
 
+  /**
+   * Parses a ClaimCheckValue from various input types (Struct, Map, String JSON).
+   *
+   * @param value the input value to parse
+   * @return the parsed ClaimCheckValue
+   * @throws ConnectException if the value type is unsupported
+   */
   public static ClaimCheckValue from(Object value) {
     if (value instanceof Struct) {
       return from((Struct) value);
@@ -64,7 +82,7 @@ public class ClaimCheckValue {
     throw new ConnectException("Unsupported claim check value type: " + value.getClass());
   }
 
-  public static ClaimCheckValue from(Struct struct) {
+  private static ClaimCheckValue from(Struct struct) {
     String referenceUrl = struct.getString(ClaimCheckSchemaFields.REFERENCE_URL);
     Long originalSizeBytes = struct.getInt64(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES);
     Long uploadedAt = struct.getInt64(ClaimCheckSchemaFields.UPLOADED_AT);
@@ -75,7 +93,7 @@ public class ClaimCheckValue {
     return new ClaimCheckValue(referenceUrl, originalSizeBytes, uploadedAt);
   }
 
-  public static ClaimCheckValue from(Map<?, ?> map) {
+  private static ClaimCheckValue from(Map<?, ?> map) {
     Object referenceUrl = map.get(ClaimCheckSchemaFields.REFERENCE_URL);
     Object originalSizeBytes = map.get(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES);
     Object uploadedAt = map.get(ClaimCheckSchemaFields.UPLOADED_AT);
@@ -89,7 +107,7 @@ public class ClaimCheckValue {
         Long.parseLong(uploadedAt.toString()));
   }
 
-  public static ClaimCheckValue fromJson(String value) {
+  private static ClaimCheckValue fromJson(String value) {
     try {
       JsonNode node = OBJECT_MAPPER.readTree(value);
       return from(node);
@@ -98,7 +116,7 @@ public class ClaimCheckValue {
     }
   }
 
-  public static ClaimCheckValue from(JsonNode node) {
+  private static ClaimCheckValue from(JsonNode node) {
     JsonNode referenceUrlNode = node.get(ClaimCheckSchemaFields.REFERENCE_URL);
     JsonNode originalSizeBytesNode = node.get(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES);
     JsonNode uploadedAtNode = node.get(ClaimCheckSchemaFields.UPLOADED_AT);

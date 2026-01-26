@@ -1,5 +1,6 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.model;
 
+/** Field name constants for the claim check schema. */
 public final class ClaimCheckSchemaFields {
 
   private ClaimCheckSchemaFields() {}

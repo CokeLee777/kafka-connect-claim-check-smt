@@ -14,6 +14,7 @@ import software.amazon.awssdk.retries.StandardRetryStrategy;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 
+/** Factory for creating configured AWS S3 clients. */
 public class S3ClientFactory {
 
   private static final int INITIAL_ATTEMPT = 1;
@@ -22,6 +23,7 @@ public class S3ClientFactory {
   private final SdkHttpClient httpClient;
   private final AwsCredentialsProvider credentialsProvider;
 
+  /** Creates a factory with default AWS SDK components. */
   public S3ClientFactory() {
     this(
         new S3RetryStrategyFactory(),
@@ -29,6 +31,13 @@ public class S3ClientFactory {
         DefaultCredentialsProvider.builder().build());
   }
 
+  /**
+   * Creates a factory with custom AWS SDK components.
+   *
+   * @param retryStrategyFactory factory for retry strategies
+   * @param httpClient HTTP client for S3 requests
+   * @param credentialsProvider AWS credentials provider
+   */
   public S3ClientFactory(
       RetryStrategyFactory<StandardRetryStrategy> retryStrategyFactory,
       SdkHttpClient httpClient,
@@ -38,6 +47,12 @@ public class S3ClientFactory {
     this.credentialsProvider = credentialsProvider;
   }
 
+  /**
+   * Creates a configured S3 client.
+   *
+   * @param config the S3 client configuration
+   * @return a configured S3Client instance
+   */
   public S3Client create(S3ClientConfig config) {
     S3ClientBuilder builder = createBuilder(config);
     configureRegion(builder, config);

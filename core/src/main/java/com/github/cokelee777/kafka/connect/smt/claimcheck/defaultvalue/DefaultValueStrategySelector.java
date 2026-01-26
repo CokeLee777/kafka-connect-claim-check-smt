@@ -11,16 +11,23 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Selects the appropriate {@link DefaultValueStrategy} for a given record. */
 public class DefaultValueStrategySelector {
 
   private static final Logger log = LoggerFactory.getLogger(DefaultValueStrategySelector.class);
 
   private final List<DefaultValueStrategy> strategies;
 
+  /** Creates a selector with the default strategy chain. */
   public DefaultValueStrategySelector() {
     this(createDefaultStrategies());
   }
 
+  /**
+   * Creates a selector with a custom strategy chain.
+   *
+   * @param strategies the ordered list of strategies to use
+   */
   public DefaultValueStrategySelector(List<DefaultValueStrategy> strategies) {
     if (strategies == null || strategies.isEmpty()) {
       throw new IllegalArgumentException("At least one strategy must be provided");
@@ -39,6 +46,13 @@ public class DefaultValueStrategySelector {
     return strategies;
   }
 
+  /**
+   * Selects the first strategy that can handle the given record.
+   *
+   * @param record the source record
+   * @return the matching strategy
+   * @throws IllegalStateException if no strategy can handle the record
+   */
   public DefaultValueStrategy selectStrategy(SourceRecord record) {
     if (record == null) {
       throw new IllegalArgumentException("Source record cannot be null");

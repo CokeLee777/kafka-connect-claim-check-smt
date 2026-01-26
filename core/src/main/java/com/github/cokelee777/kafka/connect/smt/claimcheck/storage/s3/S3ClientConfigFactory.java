@@ -2,10 +2,17 @@ package com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3;
 
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
+/** Factory for creating {@link S3ClientConfig} from Kafka Connect configuration. */
 public class S3ClientConfigFactory {
 
   private S3ClientConfigFactory() {}
 
+  /**
+   * Creates an S3ClientConfig from a Kafka Connect SimpleConfig.
+   *
+   * @param config the Kafka Connect configuration
+   * @return a new S3ClientConfig instance
+   */
   public static S3ClientConfig create(SimpleConfig config) {
     String region = config.getString(S3Storage.Config.REGION);
     String endpointOverride = config.getString(S3Storage.Config.ENDPOINT_OVERRIDE);

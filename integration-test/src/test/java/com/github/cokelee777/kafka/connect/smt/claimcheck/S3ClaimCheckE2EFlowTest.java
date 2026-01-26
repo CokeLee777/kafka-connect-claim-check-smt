@@ -401,7 +401,7 @@ class S3ClaimCheckE2EFlowTest {
 
     // 실제 데이터 검증
     ClaimCheckValue claimCheckValue =
-        ClaimCheckValue.from((Struct) transformedSourceHeader.value());
+        ClaimCheckValue.from(transformedSourceHeader.value());
     String referenceUrl = claimCheckValue.getReferenceUrl();
     long originalSizeBytes = claimCheckValue.getOriginalSizeBytes();
 

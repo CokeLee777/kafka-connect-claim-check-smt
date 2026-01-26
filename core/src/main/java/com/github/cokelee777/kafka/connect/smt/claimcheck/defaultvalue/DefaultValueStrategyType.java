@@ -1,5 +1,6 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.defaultvalue;
 
+/** Supported default value strategy types. */
 public enum DefaultValueStrategyType {
   SCHEMALESS("schemaless"),
   DEBEZIUM_STRUCT("debezium_struct"),
@@ -11,6 +12,7 @@ public enum DefaultValueStrategyType {
     this.type = type;
   }
 
+  /** Returns the type identifier string. */
   public String type() {
     return type;
   }

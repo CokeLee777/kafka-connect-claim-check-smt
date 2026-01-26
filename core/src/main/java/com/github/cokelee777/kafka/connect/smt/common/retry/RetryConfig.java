@@ -3,12 +3,20 @@ package com.github.cokelee777.kafka.connect.smt.common.retry;
 import java.time.Duration;
 import java.util.Objects;
 
+/** Configuration for retry behavior with exponential backoff. */
 public class RetryConfig {
 
   private final int maxAttempts;
   private final Duration initialBackoff;
   private final Duration maxBackoff;
 
+  /**
+   * Creates a retry configuration.
+   *
+   * @param maxAttempts maximum number of retry attempts
+   * @param initialBackoff initial backoff duration
+   * @param maxBackoff maximum backoff duration
+   */
   public RetryConfig(int maxAttempts, Duration initialBackoff, Duration maxBackoff) {
     if (maxAttempts < 0) {
       throw new IllegalArgumentException("maxAttempts must be >= 0");
@@ -26,14 +34,17 @@ public class RetryConfig {
     }
   }
 
+  /** Returns the maximum number of retry attempts. */
   public int maxAttempts() {
     return maxAttempts;
   }
 
+  /** Returns the initial backoff duration. */
   public Duration initialBackoff() {
     return initialBackoff;
   }
 
+  /** Returns the maximum backoff duration. */
   public Duration maxBackoff() {
     return maxBackoff;
   }
