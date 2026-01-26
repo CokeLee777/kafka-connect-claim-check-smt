@@ -76,11 +76,11 @@ structured data using Kafka Connect's `Schema` and `Struct` API.
 
 The ClaimCheck SMT operates at the **pre-serialization stage** of the Kafka Connect pipeline:
 
-```
+```text
 Source Connector → SMT (ClaimCheck) → Converter (JSON/Avro/Protobuf) → Kafka Broker
 ```
 
-```
+```text
 Kafka Broker → Converter (JSON/Avro/Protobuf) → SMT (ClaimCheck) → Sink Connector
 ```
 
@@ -129,7 +129,7 @@ the `ClaimCheckSourceTransform`.
 Below is an example configuration snippet for a sink connector, demonstrating how to apply
 the `ClaimCheckSinkTransform`.
 
-```
+```jsonc
 {
   "name": "my-sink-connector",
   "config": {
