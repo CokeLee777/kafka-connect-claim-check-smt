@@ -118,8 +118,8 @@ public class JsonRecordSerializer implements RecordSerializer {
       log.warn(
           "Failed to deserialize record value (topic={}). Record will be skipped.",
           topic,
-          schemaException);
-      log.debug("Schemaless deserialization failure", schemalessException);
+          schemalessException);
+      log.debug("Schema-based deserialization failure", schemaException);
       return null;
     }
   }
