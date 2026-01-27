@@ -4,6 +4,8 @@ import com.github.cokelee777.kafka.connect.smt.common.retry.RetryConfig;
 import com.github.cokelee777.kafka.connect.smt.common.retry.RetryStrategyFactory;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Objects;
+
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
@@ -42,9 +44,9 @@ public class S3ClientFactory {
       RetryStrategyFactory<StandardRetryStrategy> retryStrategyFactory,
       SdkHttpClient httpClient,
       AwsCredentialsProvider credentialsProvider) {
-    this.retryStrategyFactory = retryStrategyFactory;
-    this.httpClient = httpClient;
-    this.credentialsProvider = credentialsProvider;
+    this.retryStrategyFactory = Objects.requireNonNull(retryStrategyFactory, "retryStrategyFactory must not be null");
+    this.httpClient = Objects.requireNonNull(httpClient, "httpClient must not be null");
+    this.credentialsProvider = Objects.requireNonNull(credentialsProvider, "credentialsProvider must not be null");
   }
 
   /**
