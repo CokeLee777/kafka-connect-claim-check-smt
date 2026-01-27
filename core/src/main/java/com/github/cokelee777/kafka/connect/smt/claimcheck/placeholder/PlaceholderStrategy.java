@@ -1,4 +1,4 @@
-package com.github.cokelee777.kafka.connect.smt.claimcheck.defaultvalue;
+package com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -10,7 +10,7 @@ import org.apache.kafka.connect.source.SourceRecord;
  * <p>Used by the Source Transform to maintain schema compatibility while the actual data is stored
  * externally.
  */
-public interface DefaultValueStrategy {
+public interface PlaceholderStrategy {
 
   /**
    * Returns the strategy type identifier.
@@ -40,5 +40,5 @@ public interface DefaultValueStrategy {
    * @param record the source record
    * @return the generated placeholder value
    */
-  Object createDefaultValue(SourceRecord record);
+  Object apply(SourceRecord record);
 }

@@ -1,7 +1,7 @@
-package com.github.cokelee777.kafka.connect.smt.claimcheck.defaultvalue.strategies.struct;
+package com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.strategies;
 
-import com.github.cokelee777.kafka.connect.smt.claimcheck.defaultvalue.DefaultValueStrategy;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.defaultvalue.DefaultValueStrategyType;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.PlaceholderStrategy;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.PlaceholderStrategyType;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Field;
@@ -11,16 +11,17 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DebeziumStructStrategy implements DefaultValueStrategy {
+public class DebeziumStructPlaceholderStrategy implements PlaceholderStrategy {
 
-  private static final Logger log = LoggerFactory.getLogger(DebeziumStructStrategy.class);
+  private static final Logger log =
+      LoggerFactory.getLogger(DebeziumStructPlaceholderStrategy.class);
 
   private static final Set<String> DEBEZIUM_METADATA_FIELDS = Set.of("source", "op");
   private static final Set<String> DEBEZIUM_DATA_FIELDS = Set.of("before", "after");
 
   @Override
   public String getStrategyType() {
-    return DefaultValueStrategyType.DEBEZIUM_STRUCT.type();
+    return PlaceholderStrategyType.DEBEZIUM_STRUCT.type();
   }
 
   @Override
@@ -54,7 +55,7 @@ public class DebeziumStructStrategy implements DefaultValueStrategy {
   }
 
   @Override
-  public Object createDefaultValue(SourceRecord record) {
+  public Object apply(SourceRecord record) {
     if (!canHandle(record)) {
       throw new IllegalArgumentException(
           String.format(

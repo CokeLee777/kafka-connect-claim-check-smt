@@ -1,4 +1,4 @@
-package com.github.cokelee777.kafka.connect.smt.claimcheck.defaultvalue.strategies.schemaless;
+package com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.strategies;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -9,19 +9,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("SchemalessStrategy 단위 테스트")
-class SchemalessStrategyTest {
+@DisplayName("SchemalessPlaceholderStrategy 단위 테스트")
+class SchemalessPlaceholderStrategyTest {
 
-  private SchemalessStrategy schemalessStrategy;
+  private SchemalessPlaceholderStrategy schemalessPlaceholderStrategy;
 
   @BeforeEach
   void beforeEach() {
-    schemalessStrategy = new SchemalessStrategy();
+    schemalessPlaceholderStrategy = new SchemalessPlaceholderStrategy();
   }
 
   @Nested
-  @DisplayName("createDefaultValue 메서드 테스트")
-  class CreateDefaultValueTest {
+  @DisplayName("apply 메서드 테스트")
+  class ApplyTest {
 
     @Test
     @DisplayName("처리할 수 있는 Record를 인자로 넣으면 null이 반환된다.")
@@ -32,7 +32,7 @@ class SchemalessStrategyTest {
           new SourceRecord(null, null, "test-topic", Schema.BYTES_SCHEMA, "key", null, value);
 
       // When
-      Object defaultValue = schemalessStrategy.createDefaultValue(record);
+      Object defaultValue = schemalessPlaceholderStrategy.apply(record);
 
       // Then
       assertThat(defaultValue).isNull();
@@ -49,7 +49,7 @@ class SchemalessStrategyTest {
 
       // When & Then
       assertThatExceptionOfType(IllegalArgumentException.class)
-          .isThrownBy(() -> schemalessStrategy.createDefaultValue(record))
+          .isThrownBy(() -> schemalessPlaceholderStrategy.apply(record))
           .withMessage("Cannot handle record with non-null schema. Expected schemaless record.");
     }
   }

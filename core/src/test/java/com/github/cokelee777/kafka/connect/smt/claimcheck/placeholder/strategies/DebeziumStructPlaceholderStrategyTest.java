@@ -1,4 +1,4 @@
-package com.github.cokelee777.kafka.connect.smt.claimcheck.defaultvalue.strategies.struct;
+package com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.strategies;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -12,19 +12,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("DebeziumStructStrategy 단위 테스트")
-class DebeziumStructStrategyTest {
+@DisplayName("DebeziumStructPlaceholderStrategy 단위 테스트")
+class DebeziumStructPlaceholderStrategyTest {
 
-  private DebeziumStructStrategy debeziumStructStrategy;
+  private DebeziumStructPlaceholderStrategy debeziumStructPlaceholderStrategy;
 
   @BeforeEach
   void beforeEach() {
-    debeziumStructStrategy = new DebeziumStructStrategy();
+    debeziumStructPlaceholderStrategy = new DebeziumStructPlaceholderStrategy();
   }
 
   @Nested
-  @DisplayName("createDefaultValue 메서드 테스트")
-  class CreateDefaultValueTest {
+  @DisplayName("apply 메서드 테스트")
+  class ApplyTest {
 
     @Test
     @DisplayName("처리할 수 있는 Record를 인자로 넣으면 메타데이터를 제외한 데이터들이 기본값으로 세팅되어 반환된다.")
@@ -59,7 +59,7 @@ class DebeziumStructStrategyTest {
               null, null, "test-topic", Schema.BYTES_SCHEMA, "key", envelopeSchema, envelope);
 
       // When
-      Object defaultValue = debeziumStructStrategy.createDefaultValue(record);
+      Object defaultValue = debeziumStructPlaceholderStrategy.apply(record);
 
       // Then
       assertThat(defaultValue).isNotNull();
@@ -87,7 +87,7 @@ class DebeziumStructStrategyTest {
 
       // When & Then
       assertThatExceptionOfType(IllegalArgumentException.class)
-          .isThrownBy(() -> debeziumStructStrategy.createDefaultValue(record))
+          .isThrownBy(() -> debeziumStructPlaceholderStrategy.apply(record))
           .withMessage(
               String.format(
                   "Cannot handle record. Expected Debezium STRUCT schema. "

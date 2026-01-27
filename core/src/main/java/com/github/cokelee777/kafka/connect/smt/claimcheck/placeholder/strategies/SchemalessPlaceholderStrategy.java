@@ -1,20 +1,19 @@
-package com.github.cokelee777.kafka.connect.smt.claimcheck.defaultvalue.strategies.schemaless;
+package com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.strategies;
 
-import com.github.cokelee777.kafka.connect.smt.claimcheck.defaultvalue.DefaultValueStrategy;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.defaultvalue.DefaultValueStrategyType;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.PlaceholderStrategy;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.PlaceholderStrategyType;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SchemalessStrategy implements DefaultValueStrategy {
+public class SchemalessPlaceholderStrategy implements PlaceholderStrategy {
 
-  private static final Logger log = LoggerFactory.getLogger(SchemalessStrategy.class);
+  private static final Logger log = LoggerFactory.getLogger(SchemalessPlaceholderStrategy.class);
 
   @Override
   public String getStrategyType() {
-    return DefaultValueStrategyType.SCHEMALESS.type();
+    return PlaceholderStrategyType.SCHEMALESS.type();
   }
 
   @Override
@@ -28,7 +27,7 @@ public class SchemalessStrategy implements DefaultValueStrategy {
   }
 
   @Override
-  public Object createDefaultValue(SourceRecord record) {
+  public Object apply(SourceRecord record) {
     if (!canHandle(record)) {
       throw new IllegalArgumentException(
           "Cannot handle record with non-null schema. Expected schemaless record.");

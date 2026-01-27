@@ -1,4 +1,4 @@
-package com.github.cokelee777.kafka.connect.smt.claimcheck.defaultvalue.strategies.struct;
+package com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.strategies;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -11,19 +11,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("GenericStructStrategy 단위 테스트")
-class GenericStructStrategyTest {
+@DisplayName("GenericStructPlaceholderStrategy 단위 테스트")
+class GenericStructPlaceholderStrategyTest {
 
-  private GenericStructStrategy genericStructStrategy;
+  private GenericStructPlaceholderStrategy genericStructPlaceholderStrategy;
 
   @BeforeEach
   void beforeEach() {
-    genericStructStrategy = new GenericStructStrategy();
+    genericStructPlaceholderStrategy = new GenericStructPlaceholderStrategy();
   }
 
   @Nested
-  @DisplayName("createDefaultValue 메서드 테스트")
-  class CreateDefaultValueTest {
+  @DisplayName("apply 메서드 테스트")
+  class ApplyTest {
 
     @Test
     @DisplayName("처리할 수 있는 Record를 인자로 넣으면 데이터들이 기본값으로 세팅되어 반환된다.")
@@ -53,7 +53,7 @@ class GenericStructStrategyTest {
               null, null, "test-topic", Schema.BYTES_SCHEMA, "key", valueSchema, value);
 
       // When
-      Object defaultValue = genericStructStrategy.createDefaultValue(record);
+      Object defaultValue = genericStructPlaceholderStrategy.apply(record);
 
       // Then
       assertThat(defaultValue).isNotNull();
