@@ -77,19 +77,29 @@ structured data using Kafka Connect's `Schema` and `Struct` API.
 The ClaimCheck SMT operates at the **pre-serialization stage** of the Kafka Connect pipeline:
 
 ```text
-Source Connector → SMT (ClaimCheck) → Converter (JSON/Avro/Protobuf) → Kafka Broker
+Source Connector → SMT (ClaimCheck) → Converter (JSON/Avro/String) → Kafka Broker
 ```
 
 ```text
-Kafka Broker → Converter (JSON/Avro/Protobuf) → SMT (ClaimCheck) → Sink Connector
+Kafka Broker → Converter (JSON/Avro/String) → SMT (ClaimCheck) → Sink Connector
 ```
+
+**Converter Compatibility Note:**
+
+This SMT is **not compatible** with `org.apache.kafka.connect.converters.ByteArrayConverter` when used as a `value.converter`.
+
+**Reason:** The SMT replaces large records with a structured placeholder (`Struct`). `ByteArrayConverter` cannot process this `Struct`, causing an error in the source
+connector before the message is sent to Kafka.
+**Recommendation:** Please use a schema-aware converter like `org.apache.kafka.connect.json.JsonConverter` (with `value.converter.schemas.enable=true`),
+`io.confluent.connect.avro.AvroConverter`, or the basic `org.apache.kafka.connect.storage.StringConverter`. These are fully supported.
 
 This means:
 
-- ✅ Works **independently of Converter choice** (JSON, Avro, Protobuf, etc.)
-- ✅ Processes data as Java objects (`Struct`), not serialized bytes
+- ✅ Compatible with most common converters (e.g., `JsonConverter`, `AvroConverter`, and `StringConverter`).
+- ✅ ✅ Processes data as Java objects (`Struct`), not serialized bytes
 - ✅ **Full support** for `Schema + Struct` records (Debezium CDC, JDBC Source, etc.)
-- ✅ **Partial support** for schemaless records (`Map<String, Object>`) - entire value is offloaded to external storage and replaced with claim check metadata, then restored on sink side
+- ✅ ✅ **Partial support** for schemaless records (`Map<String, Object>`) - entire value is offloaded to external storage and replaced with claim check metadata, then restored o
+  sink side
 - ❌ Does **not** support primitive type values (e.g., raw `String`, `Integer`, `byte[]`)
 
 #### Configuration
