@@ -38,6 +38,7 @@ brokers, while still allowing consumers to retrieve the full message content whe
 **Current Storage Backends:**
 
 * Amazon S3
+* File System
 
 **Supported Connectors:**
 
@@ -107,9 +108,7 @@ To use the ClaimCheck SMT, you'll need to configure it in your Kafka Connect con
 
 ##### Source Connector Configuration
 
-Below is an example configuration snippet for a source connector, demonstrating how to apply
-the `ClaimCheckSourceTransform`.
-
+*S3 Storage Example:*
 ```jsonc
 {
   "name": "my-source-connector",
@@ -132,11 +131,35 @@ the `ClaimCheckSourceTransform`.
 }
 ```
 
+*File System Storage Example:*
+```jsonc
+{
+  "name": "my-source-connector-fs",
+  "config": {
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+    "tasks.max": "1",
+    "topic.prefix": "my-prefix-",
+    "transforms": "claimcheck",
+    "transforms.claimcheck.type": "com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSourceTransform",
+    "transforms.claimcheck.threshold.bytes": "1048576",
+    "transforms.claimcheck.storage.type": "filesystem",
+    "transforms.claimcheck.storage.filesystem.path": "/path/to/your/claim-checks"
+    // ... other connector configurations
+  }
+}
+```
+
+**Important for Distributed Deployments:** When using File System storage in a distributed Kafka Connect cluster with multiple workers:
+
+- Use a **shared network storage** (e.g., NFS, SMB/CIFS, or a distributed file system) mounted at the same path on all worker nodes
+- Ensure all Kafka Connect worker processes have **read/write permissions** to the storage path
+- Use **absolute paths** to avoid ambiguity across different worker environments
+- For production deployments, consider implementing **file system monitoring and alerting** for storage availability
+- **Security:** Ensure proper file permissions are set to restrict access to authorized Connect workers only. Consider encryption at rest for sensitive payloads.
+
 ##### Sink Connector Configuration
 
-Below is an example configuration snippet for a sink connector, demonstrating how to apply
-the `ClaimCheckSinkTransform`.
-
+*S3 Storage Example:*
 ```jsonc
 {
   "name": "my-sink-connector",
@@ -158,6 +181,23 @@ the `ClaimCheckSinkTransform`.
 }
 ```
 
+*File System Storage Example:*
+```jsonc
+{
+  "name": "my-sink-connector-fs",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": "1",
+    "topics": "my-topic",
+    "transforms": "claimcheck",
+    "transforms.claimcheck.type": "com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSinkTransform",
+    "transforms.claimcheck.storage.type": "filesystem",
+    "transforms.claimcheck.storage.filesystem.path": "/path/to/your/claim-checks"
+    // ... other connector configurations
+  }
+}
+```
+
 **ClaimCheck SMT Configuration Properties:**
 
 *ClaimCheckSourceTransform Properties:*
@@ -165,13 +205,13 @@ the `ClaimCheckSinkTransform`.
 | Property          | Required | Default         | Description                                                                      |
 |-------------------|----------|-----------------|----------------------------------------------------------------------------------|
 | `threshold.bytes` | No       | `1048576` (1MB) | Messages larger than this size (in bytes) will be offloaded to external storage. |
-| `storage.type`    | Yes      | -               | The type of storage backend to use (e.g., `s3`).                                 |
+| `storage.type`    | Yes      | -               | The type of storage backend to use (e.g., `s3`, `filesystem`).                                 |
 
 *ClaimCheckSinkTransform Properties:*
 
 | Property       | Required | Default | Description                                                                                      |
 |----------------|----------|---------|--------------------------------------------------------------------------------------------------|
-| `storage.type` | Yes      | -       | The type of storage backend to use (e.g., `s3`). Must match the source connector's storage type. |
+| `storage.type` | Yes      | -       | The type of storage backend to use (e.g., `s3`, `filesystem`). Must match the source connector's storage type. |
 
 *Common S3 Storage Properties (Both Source and Sink):*
 
@@ -184,8 +224,14 @@ the `ClaimCheckSinkTransform`.
 | `storage.s3.retry.backoff.ms`     | No       | `300`            | Initial backoff delay (in milliseconds) before retrying. Used as the base for exponential backoff.                                                                                                   |
 | `storage.s3.retry.max.backoff.ms` | No       | `20000`          | Maximum backoff delay (in milliseconds) between retries. Caps the exponential backoff calculation.                                                                                                   |
 
-> **Important:** The Sink connector's S3 configuration (`bucket.name`, `region`, `path.prefix`) must match the Source
-> connector's configuration to correctly retrieve the offloaded payloads.
+*Common File System Storage Properties (Both Source and Sink):*
+
+| Property                    | Required | Default          | Description                                                                                                                                |
+|-----------------------------|----------|------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| `storage.filesystem.path`   | No       | `claim-checks`   | The directory path for storing claim check files. **Absolute paths are strongly recommended for production deployments**. This can be a local path (single-worker only) or a network-mounted path (e.g., NFS, SMB) for distributed deployments. The path is created if it does not exist with default system permissions. Ensure proper read/write permissions for the Connect worker process. |
+
+> **Important:** The Sink connector's storage configuration must match the Source
+> connector's configuration to correctly retrieve the offloaded payloads. For example, if using the File System backend, both connectors must point to the same directory path.
 
 #### Usage
 

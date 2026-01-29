@@ -44,6 +44,7 @@ connect-plugins
 docker-compose.yml
 mysql-init
 restart-container.sh
+claim-checks
 
 ### GIT ###
 .gitmessage

@@ -3,6 +3,7 @@ package com.github.cokelee777.kafka.connect.smt.claimcheck.storage;
 import static org.assertj.core.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.filesystem.FileSystemStorage;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3.S3Storage;
 import org.apache.kafka.common.config.ConfigException;
 import org.junit.jupiter.api.DisplayName;
@@ -20,8 +21,8 @@ public class ClaimCheckStorageFactoryTest {
   class CreateTest {
 
     @Test
-    @DisplayName("올바른 Type을 인자로 넘겨주면 ClaimCheckStorage 객체를 생성한다.")
-    public void rightType() {
+    @DisplayName("S3 Type을 인자로 넘겨주면 S3Storage 객체를 생성한다.")
+    public void s3Type() {
       // Given
       String type = ClaimCheckStorageType.S3.type();
 
@@ -31,6 +32,21 @@ public class ClaimCheckStorageFactoryTest {
       // Then
       assertThat(claimCheckStorage).isNotNull();
       assertThat(claimCheckStorage).isInstanceOf(S3Storage.class);
+      assertThat(claimCheckStorage.type()).isEqualTo(type);
+    }
+
+    @Test
+    @DisplayName("FILESYSTEM Type을 인자로 넘겨주면 FileSystemStorage 객체를 생성한다.")
+    public void filesystemType() {
+      // Given
+      String type = ClaimCheckStorageType.FILESYSTEM.type();
+
+      // When
+      ClaimCheckStorage claimCheckStorage = ClaimCheckStorageFactory.create(type);
+
+      // Then
+      assertThat(claimCheckStorage).isNotNull();
+      assertThat(claimCheckStorage).isInstanceOf(FileSystemStorage.class);
       assertThat(claimCheckStorage.type()).isEqualTo(type);
     }
 

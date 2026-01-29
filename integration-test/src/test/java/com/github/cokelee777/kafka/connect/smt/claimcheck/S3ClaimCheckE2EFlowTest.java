@@ -34,7 +34,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @Testcontainers
-@DisplayName("Claim Check SMT E2E 통합 테스트")
+@DisplayName("S3 Claim Check SMT E2E 통합 테스트")
 class S3ClaimCheckE2EFlowTest {
 
   private static final String TOPIC_NAME = "test-topic";

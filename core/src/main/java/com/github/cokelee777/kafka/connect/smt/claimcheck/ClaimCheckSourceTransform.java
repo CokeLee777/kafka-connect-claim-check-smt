@@ -45,9 +45,10 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
                 STORAGE_TYPE,
                 ConfigDef.Type.STRING,
                 ConfigDef.NO_DEFAULT_VALUE,
-                ConfigDef.ValidString.in(ClaimCheckStorageType.S3.type()),
+                ConfigDef.ValidString.in(
+                    ClaimCheckStorageType.S3.type(), ClaimCheckStorageType.FILESYSTEM.type()),
                 ConfigDef.Importance.HIGH,
-                "Storage implementation type")
+                "Storage implementation type (s3, filesystem)")
             .define(
                 THRESHOLD_BYTES,
                 ConfigDef.Type.INT,

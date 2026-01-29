@@ -1,5 +1,6 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.storage;
 
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.filesystem.FileSystemStorage;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3.S3Storage;
 import java.util.HashMap;
 import java.util.Locale;
@@ -14,6 +15,7 @@ public class ClaimCheckStorageFactory {
 
   static {
     register(ClaimCheckStorageType.S3.type(), S3Storage::new);
+    register(ClaimCheckStorageType.FILESYSTEM.type(), FileSystemStorage::new);
   }
 
   private static void register(String type, Supplier<ClaimCheckStorage> supplier) {
@@ -23,7 +25,7 @@ public class ClaimCheckStorageFactory {
   /**
    * Creates a storage instance of the specified type.
    *
-   * @param type the storage type (e.g., "s3")
+   * @param type the storage type (e.g., s3, filesystem)
    * @return a new ClaimCheckStorage instance
    * @throws ConfigException if the type is unsupported or blank
    */

@@ -2,7 +2,8 @@ package com.github.cokelee777.kafka.connect.smt.claimcheck.storage;
 
 /** Supported external storage backend types. */
 public enum ClaimCheckStorageType {
-  S3("s3");
+  S3("s3"),
+  FILESYSTEM("filesystem");
 
   private final String type;
 

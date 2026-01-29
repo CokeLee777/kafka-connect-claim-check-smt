@@ -39,9 +39,10 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
                 STORAGE_TYPE,
                 ConfigDef.Type.STRING,
                 ConfigDef.NO_DEFAULT_VALUE,
-                ConfigDef.ValidString.in(ClaimCheckStorageType.S3.type()),
+                ConfigDef.ValidString.in(
+                    ClaimCheckStorageType.S3.type(), ClaimCheckStorageType.FILESYSTEM.type()),
                 ConfigDef.Importance.HIGH,
-                "Storage implementation type");
+                "Storage implementation type (s3, filesystem)");
 
     private Config() {}
   }

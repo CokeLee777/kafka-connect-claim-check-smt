@@ -2,7 +2,7 @@ subprojects {
     apply plugin: 'java'
 
     group = 'com.github.cokelee777'
-    version = '1.0.1'
+    version = '1.1.0'
 
     java {
         sourceCompatibility = JavaVersion.VERSION_11
