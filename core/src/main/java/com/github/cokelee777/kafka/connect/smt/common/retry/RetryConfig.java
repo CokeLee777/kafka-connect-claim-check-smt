@@ -20,12 +20,12 @@ public record RetryConfig(int maxAttempts, Duration initialBackoff, Duration max
     this.maxAttempts = maxAttempts;
 
     this.initialBackoff = Objects.requireNonNull(initialBackoff, "initialBackoff must not be null");
-    if (initialBackoff().isZero() || initialBackoff.isNegative()) {
+    if (this.initialBackoff.isZero() || this.initialBackoff.isNegative()) {
       throw new IllegalArgumentException("initialBackoff must be > 0");
     }
 
     this.maxBackoff = Objects.requireNonNull(maxBackoff, "maxBackoff must not be null");
-    if (maxBackoff.isZero() || maxBackoff.isNegative()) {
+    if (this.maxBackoff.isZero() || this.maxBackoff.isNegative()) {
       throw new IllegalArgumentException("maxBackoff must be > 0");
     }
   }

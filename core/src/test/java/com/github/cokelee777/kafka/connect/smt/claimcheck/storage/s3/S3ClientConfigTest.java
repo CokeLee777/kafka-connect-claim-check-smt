@@ -37,7 +37,7 @@ class S3ClientConfigTest {
       SimpleConfig config = new SimpleConfig(S3Storage.Config.DEFINITION, originals);
 
       // When
-      S3ClientConfig s3ClientConfig = S3ClientConfig.from(config);
+      S3ClientConfig s3ClientConfig = S3Storage.Config.toS3ClientConfig(config);
 
       // Then
       assertThat(s3ClientConfig).isNotNull();
@@ -69,7 +69,7 @@ class S3ClientConfigTest {
       SimpleConfig config = new SimpleConfig(S3Storage.Config.DEFINITION, originals);
 
       // When
-      S3ClientConfig s3ClientConfig = S3ClientConfig.from(config);
+      S3ClientConfig s3ClientConfig = S3Storage.Config.toS3ClientConfig(config);
 
       // Then
       assertThat(s3ClientConfig).isNotNull();

@@ -70,7 +70,7 @@ structured data using Kafka Connect's `Schema` and `Struct` API.
 - ✅ **Confluent Platform 7.8.0** (includes Apache Kafka 3.6.x) - Verified
 - ✅ Built against **Kafka Connect API 3.8.1** for forward compatibility
 
-> **Note:** The SMT is built against Kafka Connect API 3.8.1 but tested on Confluent Platform 7.6.1 (Kafka 3.6.x). The
+> **Note:** The SMT is built against Kafka Connect API 3.8.1 but tested on Confluent Platform 7.8.0 (Kafka 3.6.x). The
 > backward compatibility of Connect API allows newer builds to work on older runtime versions.
 
 **Technical Requirements:**

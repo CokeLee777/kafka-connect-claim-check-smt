@@ -89,6 +89,15 @@ public final class S3Storage implements ClaimCheckStorage {
                 ConfigDef.Importance.LOW,
                 "Maximum backoff time in milliseconds for S3 upload retries.");
 
+    public static S3ClientConfig toS3ClientConfig(SimpleConfig config) {
+      return new S3ClientConfig(
+          config.getString(REGION),
+          config.getString(ENDPOINT_OVERRIDE),
+          config.getInt(RETRY_MAX),
+          config.getLong(RETRY_BACKOFF_MS),
+          config.getLong(RETRY_MAX_BACKOFF_MS));
+    }
+
     private Config() {}
   }
 
@@ -123,8 +132,7 @@ public final class S3Storage implements ClaimCheckStorage {
     this.pathPrefix = PathUtils.normalizePathPrefix(config.getString(Config.PATH_PREFIX));
 
     if (this.s3Client == null) {
-      S3ClientConfig s3ClientConfig = S3ClientConfig.from(config);
-
+      S3ClientConfig s3ClientConfig = Config.toS3ClientConfig(config);
       S3ClientFactory s3ClientFactory = new S3ClientFactory();
       this.s3Client = s3ClientFactory.create(s3ClientConfig);
     }

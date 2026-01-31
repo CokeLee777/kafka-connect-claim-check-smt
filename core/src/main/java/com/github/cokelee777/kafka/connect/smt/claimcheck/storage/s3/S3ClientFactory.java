@@ -47,29 +47,18 @@ public class S3ClientFactory {
    * @return a configured S3Client instance
    */
   public S3Client create(S3ClientConfig config) {
-    S3ClientBuilder builder = createBuilder(config);
-    configureRegion(builder, config);
-    configureEndpoint(builder, config);
-    return builder.build();
-  }
+    S3ClientBuilder builder =
+        S3Client.builder()
+            .httpClient(httpClient)
+            .credentialsProvider(credentialsProvider)
+            .overrideConfiguration(createOverrideConfiguration(config))
+            .region(Region.of(config.region()));
 
-  private S3ClientBuilder createBuilder(S3ClientConfig config) {
-    return S3Client.builder()
-        .httpClient(httpClient)
-        .credentialsProvider(credentialsProvider)
-        .overrideConfiguration(createOverrideConfiguration(config));
-  }
-
-  private void configureRegion(S3ClientBuilder builder, S3ClientConfig config) {
-    builder.region(Region.of(config.region()));
-  }
-
-  private void configureEndpoint(S3ClientBuilder builder, S3ClientConfig config) {
-    String endpointOverride = config.endpointOverride();
-    if (endpointOverride != null) {
-      builder.endpointOverride(URI.create(endpointOverride));
-      builder.forcePathStyle(true);
+    if (config.endpointOverride() != null) {
+      builder.endpointOverride(URI.create(config.endpointOverride())).forcePathStyle(true);
     }
+
+    return builder.build();
   }
 
   ClientOverrideConfiguration createOverrideConfiguration(S3ClientConfig config) {
