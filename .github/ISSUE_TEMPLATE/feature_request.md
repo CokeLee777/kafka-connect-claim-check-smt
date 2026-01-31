@@ -18,4 +18,4 @@ What problem does it solve?
 
 ## ⚠️ Compatibility impact
 
-Does this affect backward compatibility? If yes, explain.
+(Optional) Does this affect backward compatibility? If yes, explain.

@@ -2,7 +2,7 @@
 name: Bug report
 about: Something isn't working as expected
 title: "[bug] "
-labels: bug
+labels: bug, feature
 assignees: ''
 
 ---
@@ -24,4 +24,4 @@ A clear and concise description of what you expected to happen.
 
 ## 📸 Screenshots / Logs
 
-If applicable, add screenshots or logs to help explain your problem.
+(Optional) If applicable, add screenshots or logs to help explain your problem.
