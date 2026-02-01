@@ -1,7 +1,6 @@
-# Kafka Connect SMT Toolkit
-
-This repository hosts an open-source toolkit for Kafka Connect Single Message Transforms (SMTs). It provides a
-collection of reusable SMTs designed to enhance data processing capabilities within Kafka Connect pipelines.
+# Kafka Connect Claim Check SMT
+This repository provides an open-source Single Message Transform (SMT) for Kafka Connect that implements the Claim Check pattern. 
+It enables efficient handling of large message payloads by storing them in external storage and passing only references through Kafka topics.
 
 ## Technology Stack
 
