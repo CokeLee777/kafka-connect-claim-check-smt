@@ -142,7 +142,10 @@ To use the ClaimCheck SMT, you'll need to configure it in your Kafka Connect con
     "transforms.claimcheck.type": "com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSourceTransform",
     "transforms.claimcheck.threshold.bytes": "1048576",
     "transforms.claimcheck.storage.type": "filesystem",
-    "transforms.claimcheck.storage.filesystem.path": "/path/to/your/claim-checks"
+    "transforms.claimcheck.storage.filesystem.path": "/path/to/your/claim-checks",
+    "transforms.claimcheck.storage.filesystem.retry.max": "3",
+    "transforms.claimcheck.storage.filesystem.retry.backoff.ms": "300",
+    "transforms.claimcheck.storage.filesystem.retry.max.backoff.ms": "20000"
     // ... other connector configurations
   }
 }
@@ -191,7 +194,10 @@ To use the ClaimCheck SMT, you'll need to configure it in your Kafka Connect con
     "transforms": "claimcheck",
     "transforms.claimcheck.type": "com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSinkTransform",
     "transforms.claimcheck.storage.type": "filesystem",
-    "transforms.claimcheck.storage.filesystem.path": "/path/to/your/claim-checks"
+    "transforms.claimcheck.storage.filesystem.path": "/path/to/your/claim-checks",
+    "transforms.claimcheck.storage.filesystem.retry.max": "3",
+    "transforms.claimcheck.storage.filesystem.retry.backoff.ms": "300",
+    "transforms.claimcheck.storage.filesystem.retry.max.backoff.ms": "20000"
     // ... other connector configurations
   }
 }
@@ -228,6 +234,9 @@ To use the ClaimCheck SMT, you'll need to configure it in your Kafka Connect con
 | Property                    | Required | Default          | Description                                                                                                                                |
 |-----------------------------|----------|------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
 | `storage.filesystem.path`   | No       | `claim-checks`   | The directory path for storing claim check files. **Absolute paths are strongly recommended for production deployments**. This can be a local path (single-worker only) or a network-mounted path (e.g., NFS, SMB) for distributed deployments. The path is created if it does not exist with default system permissions. Ensure proper read/write permissions for the Connect worker process. |
+| `storage.filesystem.retry.max`            | No       | `3`              | Maximum number of retry attempts for file system operations (excluding the initial attempt). Set to `0` to disable retries.                                                                                   |
+| `storage.filesystem.retry.backoff.ms`     | No       | `300`            | Initial backoff delay (in milliseconds) before retrying. Used as the base for exponential backoff.                                                                                                   |
+| `storage.filesystem.retry.max.backoff.ms` | No       | `20000`          | Maximum backoff delay (in milliseconds) between retries. Caps the exponential backoff calculation.                                                                                                   |
 
 > **Important:** The Sink connector's storage configuration must match the Source
 > connector's configuration to correctly retrieve the offloaded payloads. For example, if using the File System backend, both connectors must point to the same directory path.
