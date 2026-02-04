@@ -25,6 +25,10 @@ dependencies {
     // AssertJ
     testImplementation "org.assertj:assertj-core:${assertjVersion}"
 
+    // Mockito
+    testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+    testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+
     // TestContainers
     testImplementation platform("org.testcontainers:testcontainers-bom:${testContainerVersion}")
     testImplementation "org.testcontainers:testcontainers"

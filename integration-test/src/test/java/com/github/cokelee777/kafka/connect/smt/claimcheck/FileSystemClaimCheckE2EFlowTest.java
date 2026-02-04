@@ -1,6 +1,8 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
@@ -12,6 +14,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -20,6 +23,7 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.*;
+import org.mockito.MockedStatic;
 
 @DisplayName("FileSystem Claim Check SMT E2E 통합 테스트")
 class FileSystemClaimCheckE2EFlowTest {
@@ -111,6 +115,214 @@ class FileSystemClaimCheckE2EFlowTest {
       /** Then: Sink */
       validateRestoredSinkRecord(restoredSinkRecord, initialSourceRecord);
     }
+  }
+
+  @Nested
+  @DisplayName("FileSystem SourceTransform 재시도 통합 테스트")
+  class FileSystemSourceRetryIntegrationTest {
+
+    @Test
+    @DisplayName("일시적인 I/O 오류 발생 시 재시도하여 성공해야 한다")
+    void shouldRetryAndSucceedOnTransientFailure() {
+      // Given
+      Map<String, Object> sourceTransformConfig = generateSourceConfigWithRetry(3);
+      sourceTransform.configure(sourceTransformConfig);
+      SourceRecord initialSourceRecord = generateSourceRecord();
+
+      AtomicInteger writeAttemptCount = new AtomicInteger(0);
+      try (MockedStatic<Files> mockedFiles = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+        // 첫 번째 시도는 실패, 두 번째 시도는 성공하도록 설정
+        mockedFiles
+            .when(() -> Files.write(any(Path.class), any(byte[].class)))
+            .thenAnswer(
+                invocation -> {
+                  int attempt = writeAttemptCount.incrementAndGet();
+                  if (attempt == 1) {
+                    throw new IOException("Transient I/O error");
+                  }
+                  return invocation.callRealMethod();
+                });
+
+        // When
+        SourceRecord transformedRecord = sourceTransform.apply(initialSourceRecord);
+
+        // Then
+        assertThat(transformedRecord).isNotNull();
+        assertThat(writeAttemptCount.get()).isGreaterThanOrEqualTo(2);
+      }
+    }
+
+    @Test
+    @DisplayName("최대 재시도 횟수를 초과하면 예외가 발생해야 한다")
+    void shouldFailWhenMaxRetriesExceeded() {
+      // Given
+      Map<String, Object> sourceTransformConfig = generateSourceConfigWithRetry(2);
+      sourceTransform.configure(sourceTransformConfig);
+      SourceRecord initialSourceRecord = generateSourceRecord();
+
+      try (MockedStatic<Files> mockedFiles = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+        // 모든 시도가 실패하도록 설정
+        mockedFiles
+            .when(() -> Files.write(any(Path.class), any(byte[].class)))
+            .thenThrow(new IOException("Persistent I/O error"));
+
+        // When & Then
+        assertThatThrownBy(() -> sourceTransform.apply(initialSourceRecord))
+            .isInstanceOf(RuntimeException.class);
+      }
+    }
+
+    @Test
+    @DisplayName("재시도 설정이 0일 때 즉시 실패해야 한다")
+    void shouldFailImmediatelyWhenRetryDisabled() {
+      // Given
+      Map<String, Object> sourceTransformConfig = generateSourceConfigWithRetry(0);
+      sourceTransform.configure(sourceTransformConfig);
+      SourceRecord initialSourceRecord = generateSourceRecord();
+
+      AtomicInteger writeAttemptCount = new AtomicInteger(0);
+      try (MockedStatic<Files> mockedFiles = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+        // 모든 시도가 실패하도록 설정
+        mockedFiles
+            .when(() -> Files.write(any(Path.class), any(byte[].class)))
+            .thenAnswer(
+                invocation -> {
+                  writeAttemptCount.incrementAndGet();
+                  throw new IOException("I/O error");
+                });
+
+        // When & Then
+        assertThatThrownBy(() -> sourceTransform.apply(initialSourceRecord))
+            .isInstanceOf(RuntimeException.class);
+        // 재시도 없이 1번만 시도해야 함
+        assertThat(writeAttemptCount.get()).isEqualTo(1);
+      }
+    }
+  }
+
+  @Nested
+  @DisplayName("FileSystem SinkTransform 재시도 통합 테스트")
+  class FileSystemSinkRetryIntegrationTest {
+
+    @Test
+    @DisplayName("일시적인 I/O 오류 발생 시 재시도하여 성공해야 한다")
+    void shouldRetryAndSucceedOnTransientFailure() throws IOException {
+      // Given
+      Map<String, Object> sinkTransformConfig = generateSinkConfigWithRetry(3);
+      sinkTransform.configure(sinkTransformConfig);
+      SinkRecord initialSinkRecord = storeDataAndCreateSinkRecord();
+
+      AtomicInteger readAttemptCount = new AtomicInteger(0);
+      try (MockedStatic<Files> mockedFiles = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+        // 첫 번째 시도는 실패, 두 번째 시도는 성공하도록 설정
+        mockedFiles
+            .when(() -> Files.readAllBytes(any(Path.class)))
+            .thenAnswer(
+                invocation -> {
+                  int attempt = readAttemptCount.incrementAndGet();
+                  if (attempt == 1) {
+                    throw new IOException("Transient I/O error");
+                  }
+                  return invocation.callRealMethod();
+                });
+
+        // When
+        SinkRecord restoredSinkRecord = sinkTransform.apply(initialSinkRecord);
+
+        // Then
+        assertThat(restoredSinkRecord).isNotNull();
+        assertThat(readAttemptCount.get()).isGreaterThanOrEqualTo(2);
+      }
+    }
+
+    @Test
+    @DisplayName("최대 재시도 횟수를 초과하면 예외가 발생해야 한다")
+    void shouldFailWhenMaxRetriesExceeded() throws IOException {
+      // Given
+      Map<String, Object> sinkTransformConfig = generateSinkConfigWithRetry(2);
+      sinkTransform.configure(sinkTransformConfig);
+      SinkRecord initialSinkRecord = storeDataAndCreateSinkRecord();
+
+      try (MockedStatic<Files> mockedFiles = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+        // 모든 시도가 실패하도록 설정
+        mockedFiles
+            .when(() -> Files.readAllBytes(any(Path.class)))
+            .thenThrow(new IOException("Persistent I/O error"));
+
+        // When & Then
+        assertThatExceptionOfType(RuntimeException.class)
+            .isThrownBy(() -> sinkTransform.apply(initialSinkRecord))
+            .withMessageStartingWith("Failed to read claim check file:");
+      }
+    }
+
+    @Test
+    @DisplayName("재시도 설정이 0일 때 즉시 실패해야 한다")
+    void shouldFailImmediatelyWhenRetryDisabled() throws IOException {
+      // Given
+      Map<String, Object> sinkTransformConfig = generateSinkConfigWithRetry(0);
+      sinkTransform.configure(sinkTransformConfig);
+      SinkRecord initialSinkRecord = storeDataAndCreateSinkRecord();
+
+      AtomicInteger readAttemptCount = new AtomicInteger(0);
+      try (MockedStatic<Files> mockedFiles = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+        // 모든 시도가 실패하도록 설정
+        mockedFiles
+            .when(() -> Files.readAllBytes(any(Path.class)))
+            .thenAnswer(
+                invocation -> {
+                  readAttemptCount.incrementAndGet();
+                  throw new IOException("I/O error");
+                });
+
+        // When & Then
+        assertThatExceptionOfType(RuntimeException.class)
+            .isThrownBy(() -> sinkTransform.apply(initialSinkRecord))
+            .withMessageStartingWith("Failed to read claim check file:");
+        // 재시도 없이 1번만 시도해야 함
+        assertThat(readAttemptCount.get()).isEqualTo(1);
+      }
+    }
+
+    private SinkRecord storeDataAndCreateSinkRecord() {
+      Map<String, Object> sourceConfig = new HashMap<>();
+      sourceConfig.put(
+          ClaimCheckSourceTransform.Config.STORAGE_TYPE, ClaimCheckStorageType.FILESYSTEM.type());
+      sourceConfig.put(ClaimCheckSourceTransform.Config.THRESHOLD_BYTES, 1);
+      sourceConfig.put(FileSystemStorage.Config.PATH, tempDirPath.toString());
+      sourceTransform.configure(sourceConfig);
+
+      SourceRecord initialSourceRecord = generateSourceRecord();
+      SourceRecord transformedSourceRecord = sourceTransform.apply(initialSourceRecord);
+
+      Header transformedSourceHeader =
+          transformedSourceRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+
+      return generateSinkRecord(transformedSourceRecord, transformedSourceHeader);
+    }
+  }
+
+  private Map<String, Object> generateSourceConfigWithRetry(int retryMax) {
+    Map<String, Object> config = new HashMap<>();
+    config.put(
+        ClaimCheckSourceTransform.Config.STORAGE_TYPE, ClaimCheckStorageType.FILESYSTEM.type());
+    config.put(ClaimCheckSourceTransform.Config.THRESHOLD_BYTES, 1);
+    config.put(FileSystemStorage.Config.PATH, tempDirPath.toString());
+    config.put(FileSystemStorage.Config.RETRY_MAX, retryMax);
+    config.put(FileSystemStorage.Config.RETRY_BACKOFF_MS, 50L);
+    config.put(FileSystemStorage.Config.RETRY_MAX_BACKOFF_MS, 100L);
+    return config;
+  }
+
+  private Map<String, Object> generateSinkConfigWithRetry(int retryMax) {
+    Map<String, Object> config = new HashMap<>();
+    config.put(
+        ClaimCheckSinkTransform.Config.STORAGE_TYPE, ClaimCheckStorageType.FILESYSTEM.type());
+    config.put(FileSystemStorage.Config.PATH, tempDirPath.toString());
+    config.put(FileSystemStorage.Config.RETRY_MAX, retryMax);
+    config.put(FileSystemStorage.Config.RETRY_BACKOFF_MS, 50L);
+    config.put(FileSystemStorage.Config.RETRY_MAX_BACKOFF_MS, 100L);
+    return config;
   }
 
   private SourceRecord generateSourceRecord() {
