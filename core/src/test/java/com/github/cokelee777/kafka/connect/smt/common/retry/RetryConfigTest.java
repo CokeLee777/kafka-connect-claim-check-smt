@@ -41,7 +41,7 @@ class RetryConfigTest {
       // When & Then
       assertThatExceptionOfType(IllegalArgumentException.class)
           .isThrownBy(() -> new RetryConfig(maxAttempts, initialBackoff, maxBackoff))
-          .withMessage("maxAttempts must be >= 0");
+          .withMessage("maxAttempts must be >= 0, but was: " + maxAttempts);
     }
 
     @ParameterizedTest
@@ -70,6 +70,19 @@ class RetryConfigTest {
       assertThatExceptionOfType(IllegalArgumentException.class)
           .isThrownBy(() -> new RetryConfig(maxAttempts, initialBackoff, maxBackoff))
           .withMessage("maxBackoff must be > 0");
+    }
+
+    @Test
+    void shouldThrowExceptionWhenInitialBackoffIsGreaterThanMaxBackoff() {
+      // Given
+      int maxAttempts = 3;
+      Duration initialBackoff = Duration.ofMillis(1000L);
+      Duration maxBackoff = Duration.ofMillis(500L);
+
+      // When & Then
+      assertThatExceptionOfType(IllegalArgumentException.class)
+          .isThrownBy(() -> new RetryConfig(maxAttempts, initialBackoff, maxBackoff))
+          .withMessageContaining("initialBackoff must be <= maxBackoff");
     }
   }
 }

@@ -13,20 +13,26 @@ public record RetryConfig(int maxAttempts, Duration initialBackoff, Duration max
    * @param initialBackoff initial backoff duration
    * @param maxBackoff maximum backoff duration
    */
-  public RetryConfig(int maxAttempts, Duration initialBackoff, Duration maxBackoff) {
+  public RetryConfig {
     if (maxAttempts < 0) {
-      throw new IllegalArgumentException("maxAttempts must be >= 0");
+      throw new IllegalArgumentException("maxAttempts must be >= 0, but was: " + maxAttempts);
     }
-    this.maxAttempts = maxAttempts;
 
-    this.initialBackoff = Objects.requireNonNull(initialBackoff, "initialBackoff must not be null");
-    if (this.initialBackoff.isZero() || this.initialBackoff.isNegative()) {
+    Objects.requireNonNull(initialBackoff, "initialBackoff must not be null");
+    if (initialBackoff.isZero() || initialBackoff.isNegative()) {
       throw new IllegalArgumentException("initialBackoff must be > 0");
     }
 
-    this.maxBackoff = Objects.requireNonNull(maxBackoff, "maxBackoff must not be null");
-    if (this.maxBackoff.isZero() || this.maxBackoff.isNegative()) {
+    Objects.requireNonNull(maxBackoff, "maxBackoff must not be null");
+    if (maxBackoff.isZero() || maxBackoff.isNegative()) {
       throw new IllegalArgumentException("maxBackoff must be > 0");
+    }
+
+    if (initialBackoff.compareTo(maxBackoff) > 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              "initialBackoff must be <= maxBackoff, but initialBackoff=%s, maxBackoff=%s",
+              initialBackoff, maxBackoff));
     }
   }
 }
