@@ -68,7 +68,7 @@ shadowJar {
         exclude(dependency("org.slf4j:.*"))
     }
 
-    // 충돌 방지를 위한 패키지 재배치 (Relocation)
+    // Relocation packages from conflict
     relocate 'software.amazon.awssdk', 'com.github.cokelee777.shadow.awssdk'
     mergeServiceFiles()
 }
@@ -109,7 +109,7 @@ publishing {
         }
     }
 
-    // 배포할 저장소 위치 (GitHub Packages)
+    // GitHub Packages
     repositories {
         maven {
             name = "GitHubPackages"

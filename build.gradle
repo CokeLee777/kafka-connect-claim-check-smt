@@ -24,5 +24,5 @@ subprojects {
     }
 }
 
-// 루트 프로젝트는 빌드하지 않음
+// Root project should not be built
 tasks.maybeCreate('build').enabled = false
