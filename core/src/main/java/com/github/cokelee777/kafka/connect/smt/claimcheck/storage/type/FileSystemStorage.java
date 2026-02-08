@@ -23,6 +23,7 @@ public final class FileSystemStorage implements ClaimCheckStorage {
 
   private FileSystemStorageConfig config;
   private FileSystemClient fileSystemClient;
+  private Path resolvedStoragePath;
 
   public FileSystemStorage() {}
 
@@ -38,7 +39,7 @@ public final class FileSystemStorage implements ClaimCheckStorage {
   @Override
   public void configure(Map<String, ?> configs) {
     config = new FileSystemStorageConfig(configs);
-    validateStorageDirectoryExists(config.getNormalizedAbsolutePath());
+    resolvedStoragePath = validateAndResolveStorageDirectory(config.getNormalizedAbsolutePath());
 
     // Allow test injection of fileSystemClient
     if (fileSystemClient == null) {
@@ -46,7 +47,7 @@ public final class FileSystemStorage implements ClaimCheckStorage {
     }
   }
 
-  private void validateStorageDirectoryExists(Path normalizedAbsolutePath) {
+  private Path validateAndResolveStorageDirectory(Path normalizedAbsolutePath) {
     try {
       if (!Files.exists(normalizedAbsolutePath)) {
         Files.createDirectories(normalizedAbsolutePath);
@@ -60,6 +61,8 @@ public final class FileSystemStorage implements ClaimCheckStorage {
       if (!Files.isWritable(realPath)) {
         throw new ConfigException("Storage directory is not writable: " + realPath);
       }
+
+      return realPath;
     } catch (IOException e) {
       throw new ConfigException("Failed to create storage directory: " + normalizedAbsolutePath, e);
     }
@@ -68,7 +71,7 @@ public final class FileSystemStorage implements ClaimCheckStorage {
   @Override
   public String store(byte[] payload) {
     String filename = generateUniqueFilename();
-    Path filePath = config.getRealPath().resolve(filename);
+    Path filePath = resolvedStoragePath.resolve(filename);
     try {
       fileSystemClient.write(filePath, payload);
       return buildReferenceUrl(filePath);
@@ -117,11 +120,11 @@ public final class FileSystemStorage implements ClaimCheckStorage {
           "Claim check file does not exist or cannot be accessed: " + filePath, e);
     }
 
-    if (!realPath.startsWith(config.getRealPath())) {
+    if (!realPath.startsWith(resolvedStoragePath)) {
       throw new IllegalArgumentException(
           String.format(
               "Resolved file path '%s' is outside the configured storage path '%s'",
-              realPath, config.getRealPath()));
+              realPath, resolvedStoragePath));
     }
 
     if (!Files.isRegularFile(realPath)) {

@@ -1,16 +1,12 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.config.ConfigException;
 
-/**
- * Configuration for File System Storage.
- */
+/** Configuration for File System Storage. */
 public class FileSystemStorageConfig extends AbstractConfig {
 
   public static final String PATH_CONFIG = "storage.filesystem.path";
@@ -83,20 +79,8 @@ public class FileSystemStorageConfig extends AbstractConfig {
     return path;
   }
 
-  private Path getAbsolutePath() {
-    return Paths.get(path).toAbsolutePath();
-  }
-
   public Path getNormalizedAbsolutePath() {
-    return getAbsolutePath().normalize();
-  }
-
-  public Path getRealPath() {
-    try {
-      return getNormalizedAbsolutePath().toRealPath();
-    } catch (IOException e) {
-      throw new ConfigException("Failed to resolve real path for storage directory: " + path, e);
-    }
+    return Paths.get(path).toAbsolutePath().normalize();
   }
 
   public int getRetryMax() {

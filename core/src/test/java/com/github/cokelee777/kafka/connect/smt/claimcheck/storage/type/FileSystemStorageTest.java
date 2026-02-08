@@ -39,7 +39,7 @@ class FileSystemStorageTest {
   class ConfigureTest {
 
     @Test
-    void shouldConfigureWithAllProvidedArguments() throws IOException {
+    void shouldConfigureWithAllProvidedArguments() {
       // Given
       Map<String, String> configs =
           FileSystemStorageTestConfigProvider.builder()
@@ -54,14 +54,13 @@ class FileSystemStorageTest {
 
       // Then
       assertThat(fileSystemStorage.getConfig().getPath()).isEqualTo(tempDir.toString());
-      assertThat(fileSystemStorage.getConfig().getRealPath()).isEqualTo(tempDir.toRealPath());
       assertThat(fileSystemStorage.getConfig().getRetryMax()).isEqualTo(5);
       assertThat(fileSystemStorage.getConfig().getRetryBackoffMs()).isEqualTo(500L);
       assertThat(fileSystemStorage.getConfig().getRetryMaxBackoffMs()).isEqualTo(30000L);
     }
 
     @Test
-    void shouldUseDefaultValuesWhenNoArgumentsProvided() throws IOException {
+    void shouldUseDefaultValuesWhenNoArgumentsProvided() {
       // Given
       Map<String, String> configs = FileSystemStorageTestConfigProvider.builder().build();
 
@@ -76,8 +75,6 @@ class FileSystemStorageTest {
       Path normalizedPath = path.toAbsolutePath().normalize();
       assertThat(fileSystemStorage.getConfig().getNormalizedAbsolutePath())
           .isEqualTo(normalizedPath);
-      assertThat(fileSystemStorage.getConfig().getRealPath())
-          .isEqualTo(normalizedPath.toRealPath());
 
       assertThat(fileSystemStorage.getConfig().getRetryMax())
           .isEqualTo(FileSystemStorageConfig.RETRY_MAX_DEFAULT);
