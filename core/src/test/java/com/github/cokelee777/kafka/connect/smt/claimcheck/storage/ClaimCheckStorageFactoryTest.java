@@ -1,7 +1,6 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.storage;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.type.ClaimCheckStorage;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.type.FileSystemStorage;
@@ -49,7 +48,7 @@ public class ClaimCheckStorageFactoryTest {
     @ParameterizedTest
     @ValueSource(strings = {"unsupportedType"})
     @SuppressWarnings("resource")
-    void shouldThrowExceptionWhenStorageTypeIsUnsupported(String type) { // Given
+    void shouldThrowExceptionWhenStorageTypeIsUnsupported(String type) {
       // When & Then
       assertThatExceptionOfType(ConfigException.class)
           .isThrownBy(() -> ClaimCheckStorageFactory.create(type))
@@ -60,7 +59,7 @@ public class ClaimCheckStorageFactoryTest {
     @NullAndEmptySource
     @ValueSource(strings = {" "})
     @SuppressWarnings("resource")
-    void shouldThrowExceptionWhenStorageTypeIsBlank(String type) { // Given
+    void shouldThrowExceptionWhenStorageTypeIsBlank(String type) {
       // When & Then
       assertThatExceptionOfType(ConfigException.class)
           .isThrownBy(() -> ClaimCheckStorageFactory.create(type))

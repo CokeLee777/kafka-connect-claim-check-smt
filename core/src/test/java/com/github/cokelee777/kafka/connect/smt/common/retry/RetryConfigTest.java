@@ -33,7 +33,8 @@ class RetryConfigTest {
 
     @ParameterizedTest
     @ValueSource(ints = {-1, -2, -3})
-    void shouldThrowExceptionWhenMaxAttemptsIsNegative(int maxAttempts) { // Given
+    void shouldThrowExceptionWhenMaxAttemptsIsNegative(int maxAttempts) {
+      // Given
       Duration initialBackoff = Duration.ofMillis(300L);
       Duration maxBackoff = Duration.ofMillis(20000L);
 
@@ -59,7 +60,8 @@ class RetryConfigTest {
 
     @ParameterizedTest
     @ValueSource(longs = {-10000L, -20000L, -30000L})
-    void shouldThrowExceptionWhenMaxBackoffIsNegative(long maxBackoffMs) { // Given
+    void shouldThrowExceptionWhenMaxBackoffIsNegative(long maxBackoffMs) {
+      // Given
       int maxAttempts = 3;
       Duration initialBackoff = Duration.ofMillis(300L);
       Duration maxBackoff = Duration.ofMillis(maxBackoffMs);

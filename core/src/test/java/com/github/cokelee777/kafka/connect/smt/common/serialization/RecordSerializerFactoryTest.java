@@ -31,7 +31,7 @@ class RecordSerializerFactoryTest {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" "})
-    void shouldCreateDefaultSerializerWhenTypeIsBlank(String type) { // Given
+    void shouldCreateDefaultSerializerWhenTypeIsBlank(String type) {
       // When
       RecordSerializer recordSerializer = RecordSerializerFactory.create(type);
 
@@ -43,7 +43,7 @@ class RecordSerializerFactoryTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"unsupportedType"})
-    void shouldThrowExceptionWhenSerializerTypeIsUnsupported(String type) { // Given
+    void shouldThrowExceptionWhenSerializerTypeIsUnsupported(String type) {
       // When & Then
       assertThatExceptionOfType(ConfigException.class)
           .isThrownBy(() -> RecordSerializerFactory.create(type))
