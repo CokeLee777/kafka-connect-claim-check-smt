@@ -1,7 +1,7 @@
 ---
 name: Documentation improvements
 about: Improvements or additions to README, examples, or usage docs
-title: "[docs] "
+title: 'docs: '
 labels: documentation
 assignees: ''
 
