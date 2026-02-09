@@ -34,7 +34,7 @@ To create a new issue, comment on an existing issue, or assign an issue to yours
 
 
 ### Good First Issues
-Want to contribute to the kafka-connect-claim-check-smt project but aren't quite sure where to start? Check out our issues with the `good-first-issue` label. These are a triaged set of issues that are great for getting started on our project. These can be found on the [good first issues board](https://github.com/cokelee777/kafka-connect-claim-check-smt/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+Want to contribute to the kafka-connect-claim-check-smt project but aren't quite sure where to start? Check out our issues with the `good first issue` label. These are a triaged set of issues that are great for getting started on our project. These can be found on the [good first issues board](https://github.com/cokelee777/kafka-connect-claim-check-smt/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 
 Once you have selected an issue you'd like to work on, make sure it's not already assigned to someone else, and assign it to yourself.
 
