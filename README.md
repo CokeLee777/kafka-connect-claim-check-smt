@@ -282,8 +282,7 @@ Remember to restart your Kafka Connect workers after adding the plugin.
 
 ## Contributing
 
-We welcome contributions to this open-source project! If you have ideas for new SMTs, improvements to existing ones, or
-bug fixes, please feel free to open an issue or submit a pull request.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## License
 
