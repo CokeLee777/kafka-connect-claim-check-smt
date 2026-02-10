@@ -156,7 +156,7 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
 
   @Override
   public void close() {
-    if (storage != null && storage instanceof AutoCloseable autoCloseable) {
+    if (storage instanceof AutoCloseable autoCloseable) {
       AutoCloseableUtils.closeQuietly(autoCloseable);
     }
   }

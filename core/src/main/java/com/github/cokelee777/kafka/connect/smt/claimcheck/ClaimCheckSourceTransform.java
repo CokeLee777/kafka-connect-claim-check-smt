@@ -145,7 +145,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
   @Override
   public void close() {
-    if (storage != null && storage instanceof AutoCloseable autoCloseable) {
+    if (storage instanceof AutoCloseable autoCloseable) {
       AutoCloseableUtils.closeQuietly(autoCloseable);
     }
   }
