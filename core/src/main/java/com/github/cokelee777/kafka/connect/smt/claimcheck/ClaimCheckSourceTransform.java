@@ -9,6 +9,7 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStor
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.type.ClaimCheckStorage;
 import com.github.cokelee777.kafka.connect.smt.common.serialization.RecordSerializer;
 import com.github.cokelee777.kafka.connect.smt.common.serialization.RecordSerializerFactory;
+import com.github.cokelee777.kafka.connect.smt.common.utils.AutoCloseableUtils;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.kafka.common.config.ConfigDef;
@@ -144,8 +145,8 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
   @Override
   public void close() {
-    if (storage != null) {
-      storage.close();
+    if (storage instanceof AutoCloseable autoCloseable) {
+      AutoCloseableUtils.closeQuietly(autoCloseable);
     }
   }
 }

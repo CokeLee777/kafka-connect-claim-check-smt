@@ -45,6 +45,7 @@ public final class FileSystemStorage implements ClaimCheckStorage {
     if (fileSystemClient == null) {
       fileSystemClient = FileSystemClientFactory.create(config);
     }
+    Objects.requireNonNull(fileSystemClient, "FileSystemClient not configured");
   }
 
   private Path validateAndResolveStorageDirectory(Path normalizedAbsolutePath) {
@@ -132,10 +133,5 @@ public final class FileSystemStorage implements ClaimCheckStorage {
     }
 
     return realPath;
-  }
-
-  @Override
-  public void close() {
-    // No resources to release for file system storage
   }
 }

@@ -15,7 +15,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
-public final class S3Storage implements ClaimCheckStorage {
+public final class S3Storage implements CloseableClaimCheckStorage {
 
   private S3StorageConfig config;
   private S3Client s3Client;
@@ -39,6 +39,7 @@ public final class S3Storage implements ClaimCheckStorage {
     if (s3Client == null) {
       s3Client = S3ClientFactory.create(config);
     }
+    Objects.requireNonNull(s3Client, "S3Client not configured");
   }
 
   @Override
@@ -78,13 +79,6 @@ public final class S3Storage implements ClaimCheckStorage {
     }
   }
 
-  @Override
-  public void close() {
-    if (s3Client != null) {
-      s3Client.close();
-    }
-  }
-
   private String parseKeyFrom(String referenceUrl) {
     Objects.requireNonNull(referenceUrl, "referenceUrl must not be null");
     final String prefix = "s3://";
@@ -108,5 +102,12 @@ public final class S3Storage implements ClaimCheckStorage {
     }
 
     return path.substring(firstSlash + 1);
+  }
+
+  @Override
+  public void close() {
+    if (s3Client != null) {
+      s3Client.close();
+    }
   }
 }

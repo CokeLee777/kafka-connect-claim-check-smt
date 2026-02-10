@@ -7,8 +7,8 @@ import java.util.Map;
  *
  * <p>Stores large payloads externally and returns a reference URL for retrieval.
  */
-public sealed interface ClaimCheckStorage extends AutoCloseable
-    permits FileSystemStorage, S3Storage {
+public sealed interface ClaimCheckStorage
+    permits CloseableClaimCheckStorage, FileSystemStorage {
 
   /**
    * Returns the storage type identifier.
@@ -39,8 +39,4 @@ public sealed interface ClaimCheckStorage extends AutoCloseable
    * @return the stored payload
    */
   byte[] retrieve(String referenceUrl);
-
-  /** Releases any resources held by this storage. */
-  @Override
-  void close();
 }
