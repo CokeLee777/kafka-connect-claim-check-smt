@@ -9,10 +9,10 @@ import com.github.cokelee777.kafka.connect.smt.common.serialization.RecordSerial
 import com.github.cokelee777.kafka.connect.smt.common.serialization.RecordSerializerFactory;
 import com.github.cokelee777.kafka.connect.smt.common.utils.AutoCloseableUtils;
 import java.util.Map;
-import java.util.Objects;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.transforms.Transformation;
@@ -56,11 +56,9 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
       String storageType = config.getStorageType();
       storage = ClaimCheckStorageFactory.create(storageType);
     }
-    Objects.requireNonNull(storage, "ClaimCheckStorage not configured");
     storage.configure(configs);
 
     recordSerializer = RecordSerializerFactory.create();
-    Objects.requireNonNull(recordSerializer, "RecordSerializer not configured");
   }
 
   @Override
@@ -83,7 +81,7 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
     byte[] originalRecordBytes = retrieveOriginalRecord(claimCheckValue);
     SchemaAndValue schemaAndValue = deserializeRecord(record.topic(), originalRecordBytes);
     if (schemaAndValue == null) {
-      throw new ConnectException(
+      throw new DataException(
           "Failed to restore original record from claim check value (topic="
               + record.topic()
               + ")");
@@ -117,11 +115,11 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
     }
 
     if (originalRecordBytes.length == 0 && originalSizeBytes > 0) {
-      throw new ConnectException("Retrieved empty data from: " + referenceUrl);
+      throw new DataException("Retrieved empty data from: " + referenceUrl);
     }
 
     if (originalRecordBytes.length != originalSizeBytes) {
-      throw new ConnectException(
+      throw new DataException(
           String.format(
               "Data integrity violation: size mismatch for %s (expected: %d bytes, retrieved: %d bytes)",
               referenceUrl, originalSizeBytes, originalRecordBytes.length));

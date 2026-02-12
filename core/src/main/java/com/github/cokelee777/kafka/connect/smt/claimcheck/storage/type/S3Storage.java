@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.apache.kafka.connect.errors.DataException;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -83,19 +84,19 @@ public final class S3Storage implements CloseableClaimCheckStorage {
     Objects.requireNonNull(referenceUrl, "referenceUrl must not be null");
     final String prefix = "s3://";
     if (!referenceUrl.startsWith(prefix)) {
-      throw new IllegalArgumentException("S3 reference URL must start with 's3://'");
+      throw new DataException("S3 reference URL must start with 's3://'");
     }
 
     String path = referenceUrl.substring(prefix.length());
     int firstSlash = path.indexOf('/');
     if (firstSlash == -1 || firstSlash == 0 || firstSlash == path.length() - 1) {
-      throw new IllegalArgumentException("Invalid S3 reference URL: " + referenceUrl);
+      throw new DataException("Invalid S3 reference URL: " + referenceUrl);
     }
 
     String bucketInUrl = path.substring(0, firstSlash);
     String bucketName = config.getBucketName();
     if (!bucketName.equals(bucketInUrl)) {
-      throw new IllegalArgumentException(
+      throw new DataException(
           String.format(
               "Bucket in reference URL ('%s') does not match configured bucket ('%s')",
               bucketInUrl, bucketName));

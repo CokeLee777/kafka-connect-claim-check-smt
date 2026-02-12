@@ -6,9 +6,11 @@ import static org.mockito.Mockito.*;
 
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.S3StorageConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.S3StorageTestConfigProvider;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.connect.errors.DataException; // Added this import
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,9 +18,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
@@ -125,6 +130,82 @@ class S3StorageTest {
       assertThatExceptionOfType(RuntimeException.class)
           .isThrownBy(() -> s3Storage.store(payload))
           .withMessageStartingWith("Failed to upload to S3. Bucket: test-bucket");
+    }
+  }
+
+  @Nested
+  class RetrieveTest {
+
+    @BeforeEach
+    void setUp() {
+      Map<String, String> configs =
+          S3StorageTestConfigProvider.builder().bucketName("test-bucket").build();
+      s3Storage.configure(configs);
+    }
+
+    @Test
+    void shouldRetrieveStoredPayload() throws IOException {
+      // Given
+      byte[] payload = "payload".getBytes(StandardCharsets.UTF_8);
+      String key = "test-key";
+      String referenceUrl = "s3://test-bucket/" + key;
+
+      GetObjectRequest getObjectRequest =
+          GetObjectRequest.builder().bucket("test-bucket").key(key).build();
+      ResponseInputStream<GetObjectResponse> responseStream = mock(ResponseInputStream.class);
+      when(s3Client.getObject(getObjectRequest)).thenReturn(responseStream);
+      when(responseStream.readAllBytes()).thenReturn(payload);
+
+      // When
+      byte[] retrievedPayload = s3Storage.retrieve(referenceUrl);
+
+      // Then
+      assertThat(retrievedPayload).isEqualTo(payload);
+      verify(s3Client, times(1)).getObject(getObjectRequest);
+    }
+
+    @Test
+    void shouldThrowDataExceptionWhenUrlSchemeIsInvalid() {
+      // Given
+      String invalidUrl = "file://test-bucket/test-key";
+
+      // When & Then
+      assertThatExceptionOfType(DataException.class)
+          .isThrownBy(() -> s3Storage.retrieve(invalidUrl))
+          .withMessage("S3 reference URL must start with 's3://'");
+    }
+
+    @Test
+    void shouldThrowDataExceptionWhenUrlFormatIsInvalid() {
+      // Given
+      String invalidUrl1 = "s3://test-bucket"; // No key
+      String invalidUrl2 = "s3:///test-key"; // No bucket
+      String invalidUrl3 = "s3://test-bucket/"; // Trailing slash
+
+      // When & Then
+      assertThatExceptionOfType(DataException.class)
+          .isThrownBy(() -> s3Storage.retrieve(invalidUrl1))
+          .withMessage("Invalid S3 reference URL: " + invalidUrl1);
+      assertThatExceptionOfType(DataException.class)
+          .isThrownBy(() -> s3Storage.retrieve(invalidUrl2))
+          .withMessage("Invalid S3 reference URL: " + invalidUrl2);
+      assertThatExceptionOfType(DataException.class)
+          .isThrownBy(() -> s3Storage.retrieve(invalidUrl3))
+          .withMessage("Invalid S3 reference URL: " + invalidUrl3);
+    }
+
+    @Test
+    void shouldThrowDataExceptionWhenBucketInUrlDoesNotMatchConfiguredBucket() {
+      // Given
+      String referenceUrl = "s3://other-bucket/test-key";
+
+      // When & Then
+      assertThatExceptionOfType(DataException.class)
+          .isThrownBy(() -> s3Storage.retrieve(referenceUrl))
+          .withMessage(
+              String.format(
+                  "Bucket in reference URL ('%s') does not match configured bucket ('%s')",
+                  "other-bucket", "test-bucket"));
     }
   }
 

@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,9 +64,9 @@ public final class DebeziumStructRecordValuePlaceholder implements RecordValuePl
   @Override
   public Object apply(SourceRecord record) {
     if (!canHandle(record)) {
-      throw new IllegalArgumentException(
+      throw new DataException(
           String.format(
-              "Cannot handle record. Expected Debezium STRUCT schema. "
+              "Cannot handle record. Expected Debezium STRUCT schema for placeholder processing. "
                   + "Got schema: %s, value type: %s",
               record.valueSchema() != null ? record.valueSchema().name() : "null",
               record.value() != null ? record.value().getClass().getSimpleName() : "null"));

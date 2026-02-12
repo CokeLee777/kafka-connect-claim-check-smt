@@ -15,15 +15,15 @@ public record ClaimCheckValue(String referenceUrl, int originalSizeBytes, long u
 
   public ClaimCheckValue {
     if (referenceUrl == null || referenceUrl.isBlank()) {
-      throw new IllegalArgumentException("referenceUrl must be non-blank");
+      throw new DataException("referenceUrl must be non-blank");
     }
 
     if (originalSizeBytes < 0) {
-      throw new IllegalArgumentException("originalSizeBytes must be >= 0");
+      throw new DataException("originalSizeBytes must be >= 0");
     }
 
     if (uploadedAt <= 0) {
-      throw new IllegalArgumentException("uploadedAt must be positive epoch millis");
+      throw new DataException("uploadedAt must be positive epoch millis");
     }
   }
 
@@ -55,7 +55,7 @@ public record ClaimCheckValue(String referenceUrl, int originalSizeBytes, long u
    */
   public static ClaimCheckValue from(Object value) {
     if (value == null) {
-      throw new ConnectException("Claim check value cannot be null");
+      throw new DataException("Claim check value cannot be null");
     }
 
     if (value instanceof Struct structValue) {
@@ -70,35 +70,31 @@ public record ClaimCheckValue(String referenceUrl, int originalSizeBytes, long u
   }
 
   private static ClaimCheckValue from(Struct struct) {
-    try {
-      String referenceUrl = struct.getString(ClaimCheckSchemaFields.REFERENCE_URL);
-      if (referenceUrl == null) {
-        throw new ConnectException(
-            "Missing required field '"
-                + ClaimCheckSchemaFields.REFERENCE_URL
-                + "' in claim check Struct");
-      }
-
-      Integer originalSizeBytes = struct.getInt32(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES);
-      if (originalSizeBytes == null) {
-        throw new ConnectException(
-            "Missing required field '"
-                + ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES
-                + "' in claim check Struct");
-      }
-
-      Long uploadedAt = struct.getInt64(ClaimCheckSchemaFields.UPLOADED_AT);
-      if (uploadedAt == null) {
-        throw new ConnectException(
-            "Missing required field '"
-                + ClaimCheckSchemaFields.UPLOADED_AT
-                + "' in claim check Struct");
-      }
-
-      return new ClaimCheckValue(referenceUrl, originalSizeBytes, uploadedAt);
-    } catch (DataException e) {
-      throw new ConnectException("Invalid field type in claim check Struct: " + e.getMessage(), e);
+    String referenceUrl = struct.getString(ClaimCheckSchemaFields.REFERENCE_URL);
+    if (referenceUrl == null) {
+      throw new DataException(
+          "Missing required field '"
+              + ClaimCheckSchemaFields.REFERENCE_URL
+              + "' in claim check Struct");
     }
+
+    Integer originalSizeBytes = struct.getInt32(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES);
+    if (originalSizeBytes == null) {
+      throw new DataException(
+          "Missing required field '"
+              + ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES
+              + "' in claim check Struct");
+    }
+
+    Long uploadedAt = struct.getInt64(ClaimCheckSchemaFields.UPLOADED_AT);
+    if (uploadedAt == null) {
+      throw new DataException(
+          "Missing required field '"
+              + ClaimCheckSchemaFields.UPLOADED_AT
+              + "' in claim check Struct");
+    }
+
+    return new ClaimCheckValue(referenceUrl, originalSizeBytes, uploadedAt);
   }
 
   private static ClaimCheckValue from(Map<?, ?> map) {
@@ -107,23 +103,22 @@ public record ClaimCheckValue(String referenceUrl, int originalSizeBytes, long u
     Object uploadedAtObj = map.get(ClaimCheckSchemaFields.UPLOADED_AT);
 
     if (referenceUrlObj == null) {
-      throw new ConnectException(
+      throw new DataException(
           "Missing required field '"
               + ClaimCheckSchemaFields.REFERENCE_URL
               + "' in claim check Map");
     }
 
-    if (!(referenceUrlObj instanceof String)) {
-      throw new ConnectException(
+    if (!(referenceUrlObj instanceof String referenceUrl)) {
+      throw new DataException(
           "Invalid type for '"
               + ClaimCheckSchemaFields.REFERENCE_URL
               + "': expected String, got "
               + referenceUrlObj.getClass().getSimpleName());
     }
-    String referenceUrl = (String) referenceUrlObj;
 
-    if (originalSizeBytesObj == null) {
-      throw new ConnectException(
+      if (originalSizeBytesObj == null) {
+      throw new DataException(
           "Missing required field '"
               + ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES
               + "' in claim check Map");
@@ -132,7 +127,7 @@ public record ClaimCheckValue(String referenceUrl, int originalSizeBytes, long u
         parseInteger(originalSizeBytesObj, ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES);
 
     if (uploadedAtObj == null) {
-      throw new ConnectException(
+      throw new DataException(
           "Missing required field '" + ClaimCheckSchemaFields.UPLOADED_AT + "' in claim check Map");
     }
     long uploadedAt = parseLong(uploadedAtObj, ClaimCheckSchemaFields.UPLOADED_AT);
@@ -147,8 +142,7 @@ public record ClaimCheckValue(String referenceUrl, int originalSizeBytes, long u
 
     if (value instanceof Long longValue) {
       if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
-        throw new ConnectException(
-            "Value out of Integer range for '" + fieldName + "': " + longValue);
+        throw new DataException("Value out of Integer range for '" + fieldName + "': " + longValue);
       }
       return longValue.intValue();
     }
@@ -157,7 +151,7 @@ public record ClaimCheckValue(String referenceUrl, int originalSizeBytes, long u
       return shortValue.intValue();
     }
 
-    throw new ConnectException(
+    throw new DataException(
         "Invalid type for '"
             + fieldName
             + "': expected Integer, got "
@@ -173,7 +167,7 @@ public record ClaimCheckValue(String referenceUrl, int originalSizeBytes, long u
       return intValue.longValue();
     }
 
-    throw new ConnectException(
+    throw new DataException(
         "Invalid type for '"
             + fieldName
             + "': expected Long, got "
@@ -184,8 +178,10 @@ public record ClaimCheckValue(String referenceUrl, int originalSizeBytes, long u
     try {
       JsonNode node = OBJECT_MAPPER.readTree(value);
       return from(node);
+    } catch (DataException e) {
+      throw e;
     } catch (Exception e) {
-      throw new ConnectException("Failed to parse claim check JSON", e);
+      throw new DataException("Failed to parse claim check JSON", e);
     }
   }
 
@@ -194,25 +190,25 @@ public record ClaimCheckValue(String referenceUrl, int originalSizeBytes, long u
     JsonNode originalSizeBytesNode = node.get(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES);
     JsonNode uploadedAtNode = node.get(ClaimCheckSchemaFields.UPLOADED_AT);
     if (referenceUrlNode == null || originalSizeBytesNode == null || uploadedAtNode == null) {
-      throw new ConnectException("Missing required fields in claim check JSON");
+      throw new DataException("Missing required fields in claim check JSON");
     }
 
     if (!referenceUrlNode.isTextual()) {
-      throw new ConnectException(
+      throw new DataException(
           "Invalid type for '"
               + ClaimCheckSchemaFields.REFERENCE_URL
               + "': expected STRING, got "
               + referenceUrlNode.getNodeType());
     }
     if (!originalSizeBytesNode.isInt()) {
-      throw new ConnectException(
+      throw new DataException(
           "Invalid type for '"
               + ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES
               + "': expected INT, got "
               + originalSizeBytesNode.getNodeType());
     }
     if (!uploadedAtNode.isIntegralNumber()) {
-      throw new ConnectException(
+      throw new DataException(
           "Invalid type for '"
               + ClaimCheckSchemaFields.UPLOADED_AT
               + "': expected LONG, got "

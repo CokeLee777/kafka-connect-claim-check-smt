@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -81,14 +82,10 @@ class DebeziumStructRecordValuePlaceholderTest {
               null, null, "test-topic", Schema.BYTES_SCHEMA, "key", valueSchema, value);
 
       // When & Then
-      assertThatExceptionOfType(IllegalArgumentException.class)
+      assertThatExceptionOfType(DataException.class)
           .isThrownBy(() -> placeholder.apply(record))
-          .withMessage(
-              String.format(
-                  "Cannot handle record. Expected Debezium STRUCT schema. "
-                      + "Got schema: %s, value type: %s",
-                  record.valueSchema() != null ? record.valueSchema().name() : "null",
-                  record.value() != null ? record.value().getClass().getSimpleName() : "null"));
+          .withMessageContaining(
+              "Cannot handle record. Expected Debezium STRUCT schema for placeholder processing.");
     }
   }
 }

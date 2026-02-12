@@ -6,6 +6,7 @@ import java.util.Collections;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,9 +46,9 @@ public final class GenericStructRecordValuePlaceholder implements RecordValuePla
   @Override
   public Object apply(SourceRecord record) {
     if (!canHandle(record)) {
-      throw new IllegalArgumentException(
+      throw new DataException(
           String.format(
-              "Cannot handle record. Expected STRUCT schema with Struct value. "
+              "Cannot handle record. Expected STRUCT schema with Struct value for placeholder processing. "
                   + "Got schema: %s, value type: %s",
               record.valueSchema() != null ? record.valueSchema().name() : "null",
               record.value() != null ? record.value().getClass().getSimpleName() : "null"));
@@ -109,7 +110,7 @@ public final class GenericStructRecordValuePlaceholder implements RecordValuePla
       case STRUCT -> createNestedDefaultStruct(schema);
       case ARRAY -> Collections.emptyList();
       case MAP -> Collections.emptyMap();
-      default -> throw new IllegalArgumentException("Not a complex type: " + schema.type());
+      default -> throw new DataException("Unsupported schema type for struct field processing: " + schema.type() + ". Expected a complex type like STRUCT or ARRAY for recursive processing.");
     };
   }
 
