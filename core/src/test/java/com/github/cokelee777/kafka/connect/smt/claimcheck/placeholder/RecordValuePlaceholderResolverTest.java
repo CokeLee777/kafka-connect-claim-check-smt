@@ -2,13 +2,9 @@ package com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder;
 
 import static org.assertj.core.api.Assertions.*;
 
-import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.DebeziumStructRecordValuePlaceholder;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.GenericStructRecordValuePlaceholder;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.RecordValuePlaceholder;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.*;
 import java.util.HashMap;
 import java.util.Map;
-
-import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.SchemalessRecordValuePlaceholder;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -23,7 +19,24 @@ class RecordValuePlaceholderResolverTest {
   class ResolveTest {
 
     @Test
-    void shouldReturnDebeziumStrategyWhenRecordHasDebeziumSchema() {
+    void shouldReturnSchemalessPlaceholderWhenRecordIsSchemaless() {
+      // Given
+      Map<String, Object> value = new HashMap<>();
+      value.put("id", 1L);
+      value.put("name", "cokelee777");
+      SourceRecord record =
+          new SourceRecord(null, null, "test-topic", Schema.BYTES_SCHEMA, "key", null, value);
+
+      // When
+      RecordValuePlaceholder placeholder = RecordValuePlaceholderResolver.resolve(record);
+
+      // Then
+      assertThat(placeholder).isNotNull();
+      assertThat(placeholder).isInstanceOf(SchemalessRecordValuePlaceholder.class);
+    }
+
+    @Test
+    void shouldReturnSchemaBasedPlaceholderWhenRecordHasSchema() {
       // Given
       Schema rowSchema =
           SchemaBuilder.struct()
@@ -54,65 +67,11 @@ class RecordValuePlaceholderResolverTest {
               null, null, "test-topic", Schema.BYTES_SCHEMA, "key", valueSchema, envelope);
 
       // When
-      RecordValuePlaceholder strategy = RecordValuePlaceholderResolver.resolve(record);
+      RecordValuePlaceholder placeholder = RecordValuePlaceholderResolver.resolve(record);
 
       // Then
-      assertThat(strategy).isNotNull();
-      assertThat(strategy).isInstanceOf(DebeziumStructRecordValuePlaceholder.class);
-    }
-
-    @Test
-    void shouldReturnGenericStrategyWhenRecordHasGenericSchema() {
-      // Given
-      Schema valueSchema =
-          SchemaBuilder.struct()
-              .name("payload")
-              .field("id", Schema.INT64_SCHEMA)
-              .field("name", Schema.STRING_SCHEMA)
-              .build();
-      Struct value = new Struct(valueSchema).put("id", 1L).put("name", "cokelee777");
-      SourceRecord record =
-          new SourceRecord(
-              null, null, "test-topic", Schema.BYTES_SCHEMA, "key", valueSchema, value);
-
-      // When
-      RecordValuePlaceholder strategy = RecordValuePlaceholderResolver.resolve(record);
-
-      // Then
-      assertThat(strategy).isNotNull();
-      assertThat(strategy).isInstanceOf(GenericStructRecordValuePlaceholder.class);
-    }
-
-    @Test
-    void shouldReturnSchemalessStrategyWhenRecordIsSchemaless() {
-      // Given
-      Map<String, Object> value = new HashMap<>();
-      value.put("id", 1L);
-      value.put("name", "cokelee777");
-      SourceRecord record =
-          new SourceRecord(null, null, "test-topic", Schema.BYTES_SCHEMA, "key", null, value);
-
-      // When
-      RecordValuePlaceholder strategy = RecordValuePlaceholderResolver.resolve(record);
-
-      // Then
-      assertThat(strategy).isNotNull();
-      assertThat(strategy).isInstanceOf(SchemalessRecordValuePlaceholder.class);
-    }
-
-    @Test
-    void shouldThrowExceptionWhenSchemaIsUnsupported() {
-      // Given
-      Schema valueSchema = Schema.STRING_SCHEMA;
-      String value = "{\"id\":1,\"name\":\"cokelee777\"}";
-      SourceRecord record =
-          new SourceRecord(
-              null, null, "test-topic", Schema.BYTES_SCHEMA, "key", valueSchema, value);
-
-      // When & Then
-      assertThatExceptionOfType(DataException.class)
-          .isThrownBy(() -> RecordValuePlaceholderResolver.resolve(record))
-          .withMessageContaining("No placeholder resolution strategy found for schema:");
+      assertThat(placeholder).isNotNull();
+      assertThat(placeholder).isInstanceOf(SchemaBasedRecordValuePlaceholder.class);
     }
 
     @Test

@@ -1,6 +1,5 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
 
 /**
@@ -10,19 +9,15 @@ import org.apache.kafka.connect.source.SourceRecord;
  * <p>Used by the Source Transform to maintain schema compatibility while the actual data is stored
  * externally.
  */
-public sealed interface RecordValuePlaceholder
-    permits DebeziumStructRecordValuePlaceholder,
-        GenericStructRecordValuePlaceholder,
-        SchemalessRecordValuePlaceholder {
-
+public interface RecordValuePlaceholder {
 
   /**
-   * Checks if this placeholder can handle the given record.
+   * Checks if this placeholder supports the given record.
    *
    * @param record the record to check
-   * @return {@code true} if this placeholder can handle the record
+   * @return {@code true} if this placeholder supports the record
    */
-  boolean canHandle(SourceRecord record);
+  boolean supports(SourceRecord record);
 
   /**
    * Creates a placeholder value that preserves the original schema structure.

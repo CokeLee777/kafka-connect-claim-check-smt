@@ -1,9 +1,6 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder;
 
-import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.DebeziumStructRecordValuePlaceholder;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.GenericStructRecordValuePlaceholder;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.RecordValuePlaceholder;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.SchemalessRecordValuePlaceholder;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.*;
 import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.DataException;
@@ -16,11 +13,8 @@ public class RecordValuePlaceholderResolver {
 
   private static final Logger log = LoggerFactory.getLogger(RecordValuePlaceholderResolver.class);
 
-  private static final List<RecordValuePlaceholder> STRATEGIES =
-      List.of(
-          new DebeziumStructRecordValuePlaceholder(),
-          new GenericStructRecordValuePlaceholder(),
-          new SchemalessRecordValuePlaceholder());
+  private static final List<RecordValuePlaceholder> PLACEHOLDERS =
+      List.of(new SchemalessRecordValuePlaceholder(), new SchemaBasedRecordValuePlaceholder());
 
   private RecordValuePlaceholderResolver() {}
 
@@ -38,13 +32,19 @@ public class RecordValuePlaceholderResolver {
     }
 
     Schema schema = record.valueSchema();
-    for (RecordValuePlaceholder strategy : STRATEGIES) {
-      if (strategy.canHandle(record)) {
-        log.debug("Resolved strategy: {} for schema: {}", strategy.getClass().getSimpleName(), schema);
-        return strategy;
+    for (RecordValuePlaceholder placeholder : PLACEHOLDERS) {
+      if (placeholder.supports(record)) {
+        log.debug(
+            "Resolved placeholder: {} for schema: {}",
+            placeholder.getClass().getSimpleName(),
+            schema);
+        return placeholder;
       }
     }
 
-    throw new DataException("No placeholder resolution strategy found for schema: " + schema.type().name() + ". This usually indicates an unsupported record schema for claim check processing.");
+    throw new DataException(
+        "No placeholder resolution strategy found for schema: "
+            + schema
+            + ". This usually indicates an unsupported record schema for claim check processing.");
   }
 }

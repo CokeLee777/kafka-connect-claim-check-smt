@@ -87,7 +87,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
     final String referenceUrl = storeRecord(serializedRecord);
     final Struct claimCheckValue = createClaimCheckValue(referenceUrl, recordSizeBytes);
-    final Object placeholder = createPlaceholder(record);
+    final Object placeholderRecordValue = createPlaceholderRecordValue(record);
 
     final SourceRecord newRecord =
         record.newRecord(
@@ -96,7 +96,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
             record.keySchema(),
             record.key(),
             null,
-            placeholder,
+            placeholderRecordValue,
             record.timestamp());
 
     newRecord.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
@@ -112,7 +112,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
     final String referenceUrl = storeRecord(serializedRecord);
     final Struct claimCheckValue = createClaimCheckValue(referenceUrl, recordSizeBytes);
-    final Object placeholder = createPlaceholder(record);
+    final Object placeholderRecordValue = createPlaceholderRecordValue(record);
 
     final SourceRecord newRecord =
         record.newRecord(
@@ -121,7 +121,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
             record.keySchema(),
             record.key(),
             record.valueSchema(),
-            placeholder,
+            placeholderRecordValue,
             record.timestamp());
 
     newRecord.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
@@ -164,7 +164,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
     return ClaimCheckValue.create(referenceUrl, recordSizeBytes).toStruct();
   }
 
-  private Object createPlaceholder(SourceRecord record) {
+  private Object createPlaceholderRecordValue(SourceRecord record) {
     final RecordValuePlaceholder placeholder = RecordValuePlaceholderResolver.resolve(record);
 
     if (log.isDebugEnabled()) {
