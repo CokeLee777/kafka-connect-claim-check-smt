@@ -2,8 +2,9 @@ package com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.Collections;
 import java.util.Date;
+import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.kafka.connect.data.*;
 import org.apache.kafka.connect.source.SourceRecord;
