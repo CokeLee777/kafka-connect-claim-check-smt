@@ -11,7 +11,6 @@ import com.github.cokelee777.kafka.connect.smt.common.serialization.RecordSerial
 import com.github.cokelee777.kafka.connect.smt.common.serialization.RecordSerializerFactory;
 import com.github.cokelee777.kafka.connect.smt.common.utils.AutoCloseableUtils;
 import java.util.Map;
-import java.util.Objects;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -58,11 +57,9 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
       String storageType = config.getStorageType();
       storage = ClaimCheckStorageFactory.create(storageType);
     }
-    Objects.requireNonNull(storage, "ClaimCheckStorage not configured");
     storage.configure(configs);
 
     recordSerializer = RecordSerializerFactory.create();
-    Objects.requireNonNull(recordSerializer, "RecordSerializer not configured");
   }
 
   @Override

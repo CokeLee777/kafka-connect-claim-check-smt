@@ -8,6 +8,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -108,9 +109,9 @@ class RecordValuePlaceholderResolverTest {
               null, null, "test-topic", Schema.BYTES_SCHEMA, "key", valueSchema, value);
 
       // When & Then
-      assertThatExceptionOfType(IllegalStateException.class)
+      assertThatExceptionOfType(DataException.class)
           .isThrownBy(() -> RecordValuePlaceholderResolver.resolve(record))
-          .withMessage("No strategy found for schema: " + valueSchema);
+          .withMessageContaining("No placeholder resolution strategy found for schema:");
     }
 
     @Test
@@ -120,9 +121,9 @@ class RecordValuePlaceholderResolverTest {
       SourceRecord nullRecord = null;
 
       // When & Then
-      assertThatExceptionOfType(IllegalArgumentException.class)
+      assertThatExceptionOfType(DataException.class)
           .isThrownBy(() -> RecordValuePlaceholderResolver.resolve(nullRecord))
-          .withMessage("Source record cannot be null");
+          .withMessage("Source record cannot be null for placeholder resolution.");
     }
   }
 }

@@ -2,6 +2,7 @@ package com.github.cokelee777.kafka.connect.smt.claimcheck.model;
 
 import static org.assertj.core.api.Assertions.*;
 
+import org.apache.kafka.connect.errors.DataException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -35,7 +36,7 @@ class ClaimCheckValueTest {
       int originalSizeBytes = 1024 * 1024;
 
       // When & Then
-      assertThatExceptionOfType(IllegalArgumentException.class)
+      assertThatExceptionOfType(DataException.class)
           .isThrownBy(() -> ClaimCheckValue.create(referenceUrl, originalSizeBytes))
           .withMessage("referenceUrl must be non-blank");
     }
@@ -46,7 +47,7 @@ class ClaimCheckValueTest {
       String referenceUrl = "s3://test-bucket/claim-checks";
 
       // When & Then
-      assertThatExceptionOfType(IllegalArgumentException.class)
+      assertThatExceptionOfType(DataException.class)
           .isThrownBy(() -> ClaimCheckValue.create(referenceUrl, originalSizeBytes))
           .withMessage("originalSizeBytes must be >= 0");
     }

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.connect.errors.DataException;
 
 /**
  * File system based storage backend for the Claim Check pattern.
@@ -105,7 +106,7 @@ public final class FileSystemStorage implements ClaimCheckStorage {
     final String prefix = "file://";
 
     if (!referenceUrl.startsWith(prefix)) {
-      throw new IllegalArgumentException("File reference URL must start with 'file://'");
+      throw new DataException("File reference URL must start with 'file://'");
     }
 
     String pathStr = referenceUrl.substring(prefix.length());
@@ -117,19 +118,19 @@ public final class FileSystemStorage implements ClaimCheckStorage {
     try {
       realPath = filePath.toRealPath();
     } catch (IOException e) {
-      throw new IllegalArgumentException(
+      throw new DataException(
           "Claim check file does not exist or cannot be accessed: " + filePath, e);
     }
 
     if (!realPath.startsWith(resolvedStoragePath)) {
-      throw new IllegalArgumentException(
+      throw new DataException(
           String.format(
               "Resolved file path '%s' is outside the configured storage path '%s'",
               realPath, resolvedStoragePath));
     }
 
     if (!Files.isRegularFile(realPath)) {
-      throw new IllegalArgumentException("Claim check path is not a regular file: " + realPath);
+      throw new DataException("Claim check path is not a regular file: " + realPath);
     }
 
     return realPath;

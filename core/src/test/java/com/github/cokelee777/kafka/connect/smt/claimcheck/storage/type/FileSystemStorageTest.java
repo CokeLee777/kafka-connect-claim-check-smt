@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.connect.errors.DataException; // Added this import
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -179,7 +180,7 @@ class FileSystemStorageTest {
       String referenceUrl = "file://" + tempDir.resolve("non_existent_file.txt");
 
       // When & Then
-      assertThatExceptionOfType(IllegalArgumentException.class)
+      assertThatExceptionOfType(DataException.class) // Changed to DataException
           .isThrownBy(() -> fileSystemStorage.retrieve(referenceUrl))
           .withMessageStartingWith("Claim check file does not exist or cannot be accessed:");
     }
@@ -191,7 +192,7 @@ class FileSystemStorageTest {
       String referenceUrl = "file://" + outsideFile.toAbsolutePath();
 
       // When & Then
-      assertThatExceptionOfType(IllegalArgumentException.class)
+      assertThatExceptionOfType(DataException.class) // Changed to DataException
           .isThrownBy(() -> fileSystemStorage.retrieve(referenceUrl))
           .withMessageContaining("is outside the configured storage path");
 
@@ -205,7 +206,7 @@ class FileSystemStorageTest {
       String invalidUrl = "s3://" + tempDir.resolve("some_file.txt");
 
       // When & Then
-      assertThatExceptionOfType(IllegalArgumentException.class)
+      assertThatExceptionOfType(DataException.class) // Changed to DataException
           .isThrownBy(() -> fileSystemStorage.retrieve(invalidUrl))
           .withMessage("File reference URL must start with 'file://'");
     }

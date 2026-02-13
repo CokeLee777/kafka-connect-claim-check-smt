@@ -6,6 +6,7 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.Recor
 import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.SchemalessRecordValuePlaceholder;
 import java.util.List;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,12 +29,12 @@ public class RecordValuePlaceholderResolver {
    *
    * @param record the source record to resolve a strategy for
    * @return the matching strategy
-   * @throws IllegalArgumentException if record is null
-   * @throws IllegalStateException if no strategy can handle the record
+   * @throws DataException if record is null
+   * @throws DataException if no strategy can handle the record
    */
   public static RecordValuePlaceholder resolve(SourceRecord record) {
     if (record == null) {
-      throw new IllegalArgumentException("Source record cannot be null");
+      throw new DataException("Source record cannot be null for placeholder resolution.");
     }
 
     Schema schema = record.valueSchema();
@@ -44,6 +45,6 @@ public class RecordValuePlaceholderResolver {
       }
     }
 
-    throw new IllegalStateException("No strategy found for schema: " + schema);
+    throw new DataException("No placeholder resolution strategy found for schema: " + schema.type().name() + ". This usually indicates an unsupported record schema for claim check processing.");
   }
 }

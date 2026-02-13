@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.time.Duration;
+
+import org.apache.kafka.common.config.ConfigException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,7 +41,7 @@ class RetryConfigTest {
       Duration maxBackoff = Duration.ofMillis(20000L);
 
       // When & Then
-      assertThatExceptionOfType(IllegalArgumentException.class)
+      assertThatExceptionOfType(ConfigException.class)
           .isThrownBy(() -> new RetryConfig(maxAttempts, initialBackoff, maxBackoff))
           .withMessage("maxAttempts must be >= 0, but was: " + maxAttempts);
     }
@@ -53,7 +55,7 @@ class RetryConfigTest {
       Duration maxBackoff = Duration.ofMillis(20000L);
 
       // When & Then
-      assertThatExceptionOfType(IllegalArgumentException.class)
+      assertThatExceptionOfType(ConfigException.class)
           .isThrownBy(() -> new RetryConfig(maxAttempts, initialBackoff, maxBackoff))
           .withMessage("initialBackoff must be > 0");
     }
@@ -67,7 +69,7 @@ class RetryConfigTest {
       Duration maxBackoff = Duration.ofMillis(maxBackoffMs);
 
       // When & Then
-      assertThatExceptionOfType(IllegalArgumentException.class)
+      assertThatExceptionOfType(ConfigException.class)
           .isThrownBy(() -> new RetryConfig(maxAttempts, initialBackoff, maxBackoff))
           .withMessage("maxBackoff must be > 0");
     }
@@ -80,7 +82,7 @@ class RetryConfigTest {
       Duration maxBackoff = Duration.ofMillis(500L);
 
       // When & Then
-      assertThatExceptionOfType(IllegalArgumentException.class)
+      assertThatExceptionOfType(ConfigException.class)
           .isThrownBy(() -> new RetryConfig(maxAttempts, initialBackoff, maxBackoff))
           .withMessageContaining("initialBackoff must be <= maxBackoff");
     }
