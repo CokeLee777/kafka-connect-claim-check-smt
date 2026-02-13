@@ -101,6 +101,27 @@ This means:
 - ✅ **Partial support** for schemaless records (`Map<String, Object>`) - entire value is offloaded to external storage and replaced with claim check metadata, then restored on sink side
 - ❌ Does **not** support primitive type values (e.g., raw `String`, `Integer`, `byte[]`)
 
+### ⚠️ Metadata Preservation Contract (Important for Debezium Users)
+
+When used with Debezium CDC connectors (e.g., Debezium MySQL), the following behavior is intentional:
+
+- Debezium metadata fields such as `op`, `ts_ms`, and `source`
+- CDC envelope structure fields (`before`, `after`, etc.)
+
+are temporarily replaced with default placeholder values in the **ClaimCheckSourceTransform** when the payload is offloaded.
+
+These fields are fully restored by the corresponding **ClaimCheckSinkTransform** when the record is reconstructed.
+
+This behavior is intentional and required for the Claim Check pattern to function correctly.
+
+#### Important Implications
+
+- The Source SMT and Sink SMT form a logical pair
+- Using only the Source SMT without the Sink SMT will result in metadata loss
+- Any modification to the Sink SMT’s restoration logic may break metadata consistency
+
+This design ensures minimal message size in Kafka while preserving the full original record semantics across the pipeline.
+
 #### Configuration
 
 To use the ClaimCheck SMT, you'll need to configure it in your Kafka Connect connector.
