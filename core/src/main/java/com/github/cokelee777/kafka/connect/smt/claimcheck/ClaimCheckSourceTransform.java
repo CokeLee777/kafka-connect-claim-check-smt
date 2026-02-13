@@ -3,8 +3,6 @@ package com.github.cokelee777.kafka.connect.smt.claimcheck;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSourceTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.RecordValuePlaceholderResolver;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type.RecordValuePlaceholder;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageFactory;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.type.ClaimCheckStorage;
 import com.github.cokelee777.kafka.connect.smt.common.serialization.RecordSerializer;
@@ -79,31 +77,14 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
   }
 
   private SourceRecord applySchemaless(SourceRecord record) {
-    final byte[] serializedRecord = recordSerializer.serialize(record);
-    final int recordSizeBytes = serializedRecord != null ? serializedRecord.length : 0;
-    if (skipClaimCheck(recordSizeBytes)) {
-      return record;
-    }
-
-    final String referenceUrl = storeRecord(serializedRecord);
-    final Struct claimCheckValue = createClaimCheckValue(referenceUrl, recordSizeBytes);
-    final Object placeholderRecordValue = createPlaceholderRecordValue(record);
-
-    final SourceRecord newRecord =
-        record.newRecord(
-            record.topic(),
-            record.kafkaPartition(),
-            record.keySchema(),
-            record.key(),
-            null,
-            placeholderRecordValue,
-            record.timestamp());
-
-    newRecord.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
-    return newRecord;
+    return applyClaimCheck(record, RecordValueDefaults.forSchemaless());
   }
 
   private SourceRecord applyWithSchema(SourceRecord record) {
+    return applyClaimCheck(record, RecordValueDefaults.forSchema(record.valueSchema()));
+  }
+
+  private SourceRecord applyClaimCheck(SourceRecord record, Object placeholderValue) {
     final byte[] serializedRecord = recordSerializer.serialize(record);
     final int recordSizeBytes = serializedRecord != null ? serializedRecord.length : 0;
     if (skipClaimCheck(recordSizeBytes)) {
@@ -112,7 +93,6 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
     final String referenceUrl = storeRecord(serializedRecord);
     final Struct claimCheckValue = createClaimCheckValue(referenceUrl, recordSizeBytes);
-    final Object placeholderRecordValue = createPlaceholderRecordValue(record);
 
     final SourceRecord newRecord =
         record.newRecord(
@@ -121,7 +101,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
             record.keySchema(),
             record.key(),
             record.valueSchema(),
-            placeholderRecordValue,
+            placeholderValue,
             record.timestamp());
 
     newRecord.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
@@ -162,19 +142,6 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
   private Struct createClaimCheckValue(String referenceUrl, int recordSizeBytes) {
     return ClaimCheckValue.create(referenceUrl, recordSizeBytes).toStruct();
-  }
-
-  private Object createPlaceholderRecordValue(SourceRecord record) {
-    final RecordValuePlaceholder placeholder = RecordValuePlaceholderResolver.resolve(record);
-
-    if (log.isDebugEnabled()) {
-      log.debug(
-          "Applying placeholder strategy '{}' for topic '{}'",
-          placeholder.getClass().getSimpleName(),
-          record.topic());
-    }
-
-    return placeholder.apply(record);
   }
 
   @Override

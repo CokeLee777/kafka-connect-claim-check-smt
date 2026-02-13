@@ -1,4 +1,4 @@
-package com.github.cokelee777.kafka.connect.smt.claimcheck.placeholder.type;
+package com.github.cokelee777.kafka.connect.smt.claimcheck;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -7,21 +7,14 @@ import java.util.Date;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.kafka.connect.data.*;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * {@link RecordValuePlaceholder} implementation for schema-based records.
+ * Creates default record values that conform to Kafka Connect schemas.
  *
- * <p>This strategy generates a placeholder value based on the record's schema, filling in default
- * values for all fields according to their types. It handles primitive types, logical types
- * (Timestamp, Date, Time, Decimal), and nested structures like Structs, Arrays, and Maps.
+ * <p>Used to create placeholder record values for claim check pattern, replacing large payloads
+ * while maintaining schema compatibility.
  */
-public final class SchemaBasedRecordValuePlaceholder implements RecordValuePlaceholder {
-
-  private static final Logger log =
-      LoggerFactory.getLogger(SchemaBasedRecordValuePlaceholder.class);
+public class RecordValueDefaults {
 
   private static final Map<String, Supplier<Object>> LOGICAL_TYPE_DEFAULTS =
       Map.of(
@@ -30,21 +23,24 @@ public final class SchemaBasedRecordValuePlaceholder implements RecordValuePlace
           Time.LOGICAL_NAME, () -> new Date(0),
           Decimal.LOGICAL_NAME, () -> BigDecimal.ZERO);
 
-  @Override
-  public boolean supports(SourceRecord record) {
-    return record.valueSchema() != null;
+  private RecordValueDefaults() {}
+
+  /**
+   * Creates a default value for schemaless records.
+   *
+   * @return null (schemaless records use null as placeholder)
+   */
+  public static Object forSchemaless() {
+    return null;
   }
 
-  @Override
-  public Object apply(SourceRecord record) {
-    log.debug(
-        "Creating default value for schema based record from topic: {}, schema: {}",
-        record.topic(),
-        record.valueSchema());
-    return resolveDefaultValue(record.valueSchema());
-  }
-
-  private Object resolveDefaultValue(Schema schema) {
+  /**
+   * Creates a default value for the given schema.
+   *
+   * @param schema the schema to create a default value for
+   * @return the default value appropriate for the schema type
+   */
+  public static Object forSchema(Schema schema) {
     if (schema.defaultValue() != null) {
       return schema.defaultValue();
     }
@@ -73,10 +69,10 @@ public final class SchemaBasedRecordValuePlaceholder implements RecordValuePlace
     };
   }
 
-  private Struct createStruct(Schema schema) {
+  private static Struct createStruct(Schema schema) {
     Struct struct = new Struct(schema);
     for (Field field : schema.fields()) {
-      struct.put(field, resolveDefaultValue(field.schema()));
+      struct.put(field, forSchema(field.schema()));
     }
     return struct;
   }
