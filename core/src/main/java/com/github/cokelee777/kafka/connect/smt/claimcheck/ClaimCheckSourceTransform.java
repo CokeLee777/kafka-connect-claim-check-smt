@@ -36,15 +36,15 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
   public ClaimCheckSourceTransform() {}
 
-  public ClaimCheckSourceTransformConfig getConfig() {
+  ClaimCheckSourceTransformConfig getConfig() {
     return config;
   }
 
-  public ClaimCheckStorage getStorage() {
+  ClaimCheckStorage getStorage() {
     return storage;
   }
 
-  public RecordSerializer getRecordSerializer() {
+  RecordSerializer getRecordSerializer() {
     return recordSerializer;
   }
 
@@ -60,68 +60,61 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
     storage.configure(configs);
 
     recordSerializer = RecordSerializerFactory.create();
+
+    log.info(
+        "ClaimCheck source transform configured: threshold={}bytes, storage={}",
+        config.getThresholdBytes(),
+        config.getStorageType());
   }
 
   @Override
   public SourceRecord apply(SourceRecord record) {
     if (record.value() == null) {
-      log.debug("Skipping claim check: record value is null");
+      return record;
+    } else if (record.valueSchema() == null) {
+      return applySchemaless(record);
+    } else {
+      return applyWithSchema(record);
+    }
+  }
+
+  private SourceRecord applySchemaless(SourceRecord record) {
+    final byte[] serializedRecord = recordSerializer.serialize(record);
+    final int recordSizeBytes = serializedRecord != null ? serializedRecord.length : 0;
+    if (skipClaimCheck(recordSizeBytes)) {
       return record;
     }
 
-    byte[] originalRecordBytes = serializeRecord(record);
-    int thresholdBytes = config.getThresholdBytes();
-    if (originalRecordBytes == null || originalRecordBytes.length <= thresholdBytes) {
-      log.debug(
-          "Record size {} below threshold {}, skipping claim check",
-          originalRecordBytes != null ? originalRecordBytes.length : 0,
-          thresholdBytes);
+    final String referenceUrl = storeRecord(serializedRecord);
+    final Struct claimCheckValue = createClaimCheckValue(referenceUrl, recordSizeBytes);
+    final Object placeholder = createPlaceholder(record);
+
+    final SourceRecord newRecord =
+        record.newRecord(
+            record.topic(),
+            record.kafkaPartition(),
+            record.keySchema(),
+            record.key(),
+            null,
+            placeholder,
+            record.timestamp());
+
+    newRecord.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
+    return newRecord;
+  }
+
+  private SourceRecord applyWithSchema(SourceRecord record) {
+    final byte[] serializedRecord = recordSerializer.serialize(record);
+    final int recordSizeBytes = serializedRecord != null ? serializedRecord.length : 0;
+    if (skipClaimCheck(recordSizeBytes)) {
       return record;
     }
 
-    log.debug(
-        "Record size {} exceeds threshold {}, applying claim check",
-        originalRecordBytes.length,
-        thresholdBytes);
-    return createClaimCheckRecord(record, originalRecordBytes);
-  }
+    final String referenceUrl = storeRecord(serializedRecord);
+    final Struct claimCheckValue = createClaimCheckValue(referenceUrl, recordSizeBytes);
+    final Object placeholder = createPlaceholder(record);
 
-  private byte[] serializeRecord(SourceRecord record) {
-    return recordSerializer.serialize(record);
-  }
-
-  private SourceRecord createClaimCheckRecord(SourceRecord record, byte[] originalRecordBytes) {
-    String referenceUrl = storeOriginalRecord(originalRecordBytes);
-    Struct claimCheckValue = createClaimCheckValue(referenceUrl, originalRecordBytes.length);
-    Object placeholder = createPlaceholder(record);
-    return buildClaimCheckRecord(record, claimCheckValue, placeholder);
-  }
-
-  private String storeOriginalRecord(byte[] originalRecordBytes) {
-    String referenceUrl = storage.store(originalRecordBytes);
-    log.debug(
-        "Stored original record. Size: {} bytes, Reference URL: {}",
-        originalRecordBytes.length,
-        referenceUrl);
-    return referenceUrl;
-  }
-
-  private Struct createClaimCheckValue(String referenceUrl, int originalSizeBytes) {
-    return ClaimCheckValue.create(referenceUrl, originalSizeBytes).toStruct();
-  }
-
-  private Object createPlaceholder(SourceRecord record) {
-    RecordValuePlaceholder strategy = RecordValuePlaceholderResolver.resolve(record);
-    log.debug(
-        "Applying placeholder with strategy: '{}' for topic: '{}'",
-        strategy.getPlaceholderType(),
-        record.topic());
-    return strategy.apply(record);
-  }
-
-  private SourceRecord buildClaimCheckRecord(
-      SourceRecord record, Struct claimCheckValue, Object placeholder) {
-    SourceRecord sourceRecord =
+    final SourceRecord newRecord =
         record.newRecord(
             record.topic(),
             record.kafkaPartition(),
@@ -131,8 +124,57 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
             placeholder,
             record.timestamp());
 
-    sourceRecord.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
-    return sourceRecord;
+    newRecord.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
+    return newRecord;
+  }
+
+  private boolean skipClaimCheck(int recordSizeBytes) {
+    final int thresholdBytes = config.getThresholdBytes();
+    if (recordSizeBytes <= thresholdBytes) {
+      if (log.isDebugEnabled()) {
+        log.debug(
+            "Record size {} bytes is below threshold {} bytes, skipping claim check",
+            recordSizeBytes,
+            thresholdBytes);
+      }
+      return true;
+    }
+
+    if (log.isDebugEnabled()) {
+      log.debug(
+          "Record size {} bytes exceeds threshold {} bytes, applying claim check",
+          recordSizeBytes,
+          thresholdBytes);
+    }
+    return false;
+  }
+
+  private String storeRecord(byte[] serializedRecord) {
+    final String referenceUrl = storage.store(serializedRecord);
+
+    if (log.isDebugEnabled()) {
+      log.debug(
+          "Stored record of {} bytes at reference: {}", serializedRecord.length, referenceUrl);
+    }
+
+    return referenceUrl;
+  }
+
+  private Struct createClaimCheckValue(String referenceUrl, int recordSizeBytes) {
+    return ClaimCheckValue.create(referenceUrl, recordSizeBytes).toStruct();
+  }
+
+  private Object createPlaceholder(SourceRecord record) {
+    final RecordValuePlaceholder placeholder = RecordValuePlaceholderResolver.resolve(record);
+
+    if (log.isDebugEnabled()) {
+      log.debug(
+          "Applying placeholder strategy '{}' for topic '{}'",
+          placeholder.getPlaceholderType(),
+          record.topic());
+    }
+
+    return placeholder.apply(record);
   }
 
   @Override

@@ -35,15 +35,15 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
 
   public ClaimCheckSinkTransform() {}
 
-  public ClaimCheckSinkTransformConfig getConfig() {
+  ClaimCheckSinkTransformConfig getConfig() {
     return config;
   }
 
-  public ClaimCheckStorage getStorage() {
+  ClaimCheckStorage getStorage() {
     return storage;
   }
 
-  public RecordSerializer getRecordSerializer() {
+  RecordSerializer getRecordSerializer() {
     return recordSerializer;
   }
 
@@ -59,6 +59,8 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
     storage.configure(configs);
 
     recordSerializer = RecordSerializerFactory.create();
+
+    log.info("ClaimCheck sink transform configured: storage={}", config.getStorageType());
   }
 
   @Override
@@ -69,7 +71,9 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
 
     Header claimCheckHeader = record.headers().lastWithName(ClaimCheckSchema.NAME);
     if (claimCheckHeader == null || claimCheckHeader.value() == null) {
-      log.debug("No claim-check header or value found for record from topic: {}", record.topic());
+      if (log.isDebugEnabled()) {
+        log.debug("No claim-check header or value found for record from topic: {}", record.topic());
+      }
       return record;
     }
 
@@ -98,10 +102,12 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
     String referenceUrl = claimCheckValue.referenceUrl();
     int originalSizeBytes = claimCheckValue.originalSizeBytes();
 
-    log.debug(
-        "Recovering claim check record from: {}, original size: {} bytes",
-        referenceUrl,
-        originalSizeBytes);
+    if (log.isDebugEnabled()) {
+      log.debug(
+          "Recovering claim check record from: {}, original size: {} bytes",
+          referenceUrl,
+          originalSizeBytes);
+    }
 
     byte[] originalRecordBytes = storage.retrieve(referenceUrl);
     validateRetrievedPayload(originalRecordBytes, referenceUrl, originalSizeBytes);
