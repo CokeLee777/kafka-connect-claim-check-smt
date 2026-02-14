@@ -84,35 +84,40 @@ Source Connector → SMT (ClaimCheck) → Converter (JSON/Avro/String) → Kafka
 Kafka Broker → Converter (JSON/Avro/String) → SMT (ClaimCheck) → Sink Connector
 ```
 
-**Converter Compatibility Note:**
+#### 🛠 Data Type Support & Converter Compatibility
 
-This SMT is **not compatible** with `org.apache.kafka.connect.converters.ByteArrayConverter` when used as a `value.converter`.
+##### 1. Comprehensive Data Type Support
 
-**Reason:** The SMT replaces large records with a structured placeholder (`Struct`). `ByteArrayConverter` cannot process this `Struct`, causing an error in the source
-connector before the message is sent to Kafka.
-**Recommendation:** Please use a schema-aware converter like `org.apache.kafka.connect.json.JsonConverter` (with `value.converter.schemas.enable=true`),
-`io.confluent.connect.avro.AvroConverter`, or the basic `org.apache.kafka.connect.storage.StringConverter`. These are fully supported.
+This SMT fully supports standard Kafka Connect data types in both Schema and Schemaless modes. It seamlessly handles:
 
-This means:
+- Complex Types: Struct, Map, Array
+- Primitive Types: String, Integer, Long, byte[], etc.
 
-- ✅ Compatible with most common converters (e.g., `JsonConverter`, `AvroConverter`, and `StringConverter`).
-- ✅ Processes data as Java objects (`Struct`), not serialized bytes
-- ✅ **Full support** for `Schema + Struct` records (Debezium CDC, JDBC Source, etc.)
-- ✅ **Partial support** for schemaless records (`Map<String, Object>`) - entire value is offloaded to external storage and replaced with claim check metadata, then restored on sink side
-- ❌ Does **not** support primitive type values (e.g., raw `String`, `Integer`, `byte[]`)
+##### 2. Choosing the Right Converter
 
-### ⚠️ Metadata Preservation Contract (Important for Debezium Users)
+The SMT processes records before they reach the Kafka Connect Converter. Therefore, your value.converter must be compatible with the data type produced by your Source Connector, regardless of this SMT.
+
+- For Structured Data (e.g., Debezium, JDBC): Use AvroConverter, JsonConverter, or ProtobufConverter.
+- For Raw Data: Use StringConverter or ByteArrayConverter.
+
+> **⚠️ Important Note on ByteArrayConverter**
+> 
+> While ByteArrayConverter can handle offloaded records (which become null or default values), it cannot process complex types (like Struct) that are not offloaded.
+> 
+> - **Do not use** ByteArrayConverter if your Source Connector produces Structs or Maps. 
+> - It will fail on any record that skips the claim check process.
+
+#### ⚠️ Metadata Preservation Contract (Important for Debezium Users)
 
 When used with Debezium CDC connectors (e.g., Debezium MySQL), the following behavior is intentional:
 
-- Debezium metadata fields such as `op`, `ts_ms`, and `source`
-- CDC envelope structure fields (`before`, `after`, etc.)
+1.  **In `ClaimCheckSourceTransform`:**
+    Debezium metadata fields (`op`, `ts_ms`, `source`) and CDC envelope structures (`before`, `after`) are temporarily replaced with **default placeholder values** when the payload is offloaded.
 
-are temporarily replaced with default placeholder values in the **ClaimCheckSourceTransform** when the payload is offloaded.
+2.  **In `ClaimCheckSinkTransform`:**
+    These fields are **fully restored** when the record is reconstructed.
 
-These fields are fully restored by the corresponding **ClaimCheckSinkTransform** when the record is reconstructed.
-
-This behavior is intentional and required for the Claim Check pattern to function correctly.
+**Note:** This temporary replacement is required for the Claim Check pattern to function correctly and preserve schema consistency.
 
 #### Important Implications
 
