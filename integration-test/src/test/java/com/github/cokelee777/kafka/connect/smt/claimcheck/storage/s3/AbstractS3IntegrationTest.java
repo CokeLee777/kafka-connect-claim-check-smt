@@ -12,7 +12,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 
-public abstract class AbstractS3IntegrationTest {
+abstract class AbstractS3IntegrationTest {
 
   private static final Logger log =
       LoggerFactory.getLogger(AbstractS3IntegrationTest.class.getName());

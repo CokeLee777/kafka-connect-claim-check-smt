@@ -12,7 +12,6 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
@@ -29,7 +28,7 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
-public class NormalFlowS3IntegrationTest extends AbstractS3IntegrationTest {
+class NormalFlowS3IntegrationTest extends AbstractS3IntegrationTest {
 
   private ClaimCheckSourceTransform sourceTransform;
   private ClaimCheckSinkTransform sinkTransform;
@@ -47,7 +46,7 @@ public class NormalFlowS3IntegrationTest extends AbstractS3IntegrationTest {
   }
 
   @Test
-  void shouldStorePayloadToS3InSourceAndRestoreItInSink() throws IOException, URISyntaxException {
+  void shouldStorePayloadToS3InSourceAndRestoreItInSink() throws IOException {
     // Given: Common
     // Common config
     Map<String, Object> commonConfig = new HashMap<>();
@@ -117,8 +116,7 @@ public class NormalFlowS3IntegrationTest extends AbstractS3IntegrationTest {
   }
 
   private Header validateTransformedSourceRecord(
-      SourceRecord transformedSourceRecord, SourceRecord initialSourceRecord)
-      throws IOException, URISyntaxException {
+      SourceRecord transformedSourceRecord, SourceRecord initialSourceRecord) throws IOException {
     // Validate ClaimCheckSourceRecord
     assertThat(transformedSourceRecord).isNotNull();
     assertThat(transformedSourceRecord.topic()).isEqualTo(TOPIC_NAME);
@@ -150,7 +148,7 @@ public class NormalFlowS3IntegrationTest extends AbstractS3IntegrationTest {
     assertThat(originalSizeBytes).isGreaterThan(0);
 
     // Verify that actual data is stored in S3
-    String key = new URI(referenceUrl).getPath().substring(1);
+    String key = URI.create(referenceUrl).getPath().substring(1);
     try (ResponseInputStream<GetObjectResponse> s3Object =
         s3Client.getObject(GetObjectRequest.builder().bucket(BUCKET_NAME).key(key).build())) {
       byte[] serializedRecord = s3Object.readAllBytes();

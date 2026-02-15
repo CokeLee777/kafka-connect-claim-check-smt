@@ -7,7 +7,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.utility.DockerImageName;
 
-public abstract class AbstractS3WithToxiproxyIntegrationTest extends AbstractS3IntegrationTest {
+abstract class AbstractS3WithToxiproxyIntegrationTest extends AbstractS3IntegrationTest {
 
   private static final int S3_INTERNAL_PORT = 4566;
 

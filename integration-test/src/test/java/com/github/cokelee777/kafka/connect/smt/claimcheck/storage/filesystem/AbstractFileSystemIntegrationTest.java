@@ -10,7 +10,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class AbstractFileSystemIntegrationTest {
+abstract class AbstractFileSystemIntegrationTest {
 
   private static final Logger log =
       LoggerFactory.getLogger(AbstractFileSystemIntegrationTest.class);

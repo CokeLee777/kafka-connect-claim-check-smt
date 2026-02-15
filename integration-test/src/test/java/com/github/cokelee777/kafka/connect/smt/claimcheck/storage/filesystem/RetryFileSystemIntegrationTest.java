@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
-public class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
+class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
 
   private ClaimCheckSourceTransform sourceTransform;
   private ClaimCheckSinkTransform sinkTransform;
@@ -239,8 +239,8 @@ public class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegratio
     config.put(ClaimCheckSourceTransformConfig.THRESHOLD_BYTES_CONFIG, 1);
     config.put(FileSystemStorageConfig.PATH_CONFIG, TEMP_DIR_PATH.toString());
     config.put(FileSystemStorageConfig.RETRY_MAX_CONFIG, retryMax);
-    config.put(FileSystemStorageConfig.RETRY_BACKOFF_MS_CONFIG, 50L);
-    config.put(FileSystemStorageConfig.RETRY_MAX_BACKOFF_MS_CONFIG, 100L);
+    config.put(FileSystemStorageConfig.RETRY_BACKOFF_MS_CONFIG, 5L);
+    config.put(FileSystemStorageConfig.RETRY_MAX_BACKOFF_MS_CONFIG, 10L);
     return config;
   }
 
@@ -250,8 +250,8 @@ public class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegratio
         ClaimCheckSinkTransformConfig.STORAGE_TYPE_CONFIG, ClaimCheckStorageType.FILESYSTEM.type());
     config.put(FileSystemStorageConfig.PATH_CONFIG, TEMP_DIR_PATH.toString());
     config.put(FileSystemStorageConfig.RETRY_MAX_CONFIG, retryMax);
-    config.put(FileSystemStorageConfig.RETRY_BACKOFF_MS_CONFIG, 50L);
-    config.put(FileSystemStorageConfig.RETRY_MAX_BACKOFF_MS_CONFIG, 100L);
+    config.put(FileSystemStorageConfig.RETRY_BACKOFF_MS_CONFIG, 5L);
+    config.put(FileSystemStorageConfig.RETRY_MAX_BACKOFF_MS_CONFIG, 10L);
     return config;
   }
 

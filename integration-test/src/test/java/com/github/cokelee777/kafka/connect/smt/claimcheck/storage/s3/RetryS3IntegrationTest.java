@@ -27,7 +27,7 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
-public class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
+class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
 
   private ClaimCheckSourceTransform sourceTransform;
   private ClaimCheckSinkTransform sinkTransform;
@@ -122,7 +122,7 @@ public class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTe
       SinkRecord initialSinkRecord = storeDataAndCreateSinkRecord();
 
       // Add proxy network latency
-      s3Proxy.toxics().latency("latency", ToxicDirection.DOWNSTREAM, 10);
+      s3Proxy.toxics().latency("latency", ToxicDirection.DOWNSTREAM, 100);
 
       // When
       SinkRecord restoredSinkRecord = sinkTransform.apply(initialSinkRecord);
@@ -197,8 +197,8 @@ public class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTe
     config.put(S3StorageConfig.REGION_CONFIG, localstack.getRegion());
     config.put(S3StorageConfig.ENDPOINT_OVERRIDE_CONFIG, getProxiedEndpoint());
     config.put(S3StorageConfig.RETRY_MAX_CONFIG, retryMax);
-    config.put(S3StorageConfig.RETRY_BACKOFF_MS_CONFIG, 50L);
-    config.put(S3StorageConfig.RETRY_MAX_BACKOFF_MS_CONFIG, 100L);
+    config.put(S3StorageConfig.RETRY_BACKOFF_MS_CONFIG, 5L);
+    config.put(S3StorageConfig.RETRY_MAX_BACKOFF_MS_CONFIG, 10L);
     return config;
   }
 
@@ -209,8 +209,8 @@ public class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTe
     config.put(S3StorageConfig.REGION_CONFIG, localstack.getRegion());
     config.put(S3StorageConfig.ENDPOINT_OVERRIDE_CONFIG, getProxiedEndpoint());
     config.put(S3StorageConfig.RETRY_MAX_CONFIG, retryMax);
-    config.put(S3StorageConfig.RETRY_BACKOFF_MS_CONFIG, 50L);
-    config.put(S3StorageConfig.RETRY_MAX_BACKOFF_MS_CONFIG, 100L);
+    config.put(S3StorageConfig.RETRY_BACKOFF_MS_CONFIG, 5L);
+    config.put(S3StorageConfig.RETRY_MAX_BACKOFF_MS_CONFIG, 10L);
     return config;
   }
 
