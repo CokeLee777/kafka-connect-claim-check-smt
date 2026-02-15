@@ -14,6 +14,7 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -313,10 +314,11 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
     assertThat(originalSizeBytes).isGreaterThan(0);
 
     // Verify that actual data is stored in file system
-    Path filePath = Path.of(referenceUrl.replace("file://", ""));
+    Path filePath = Path.of(URI.create(referenceUrl).getPath());
     assertThat(Files.exists(filePath)).isTrue();
-    assertThat(Files.readAllBytes(filePath)).isNotEmpty();
-    assertThat(Files.readAllBytes(filePath).length).isEqualTo(originalSizeBytes);
+    byte[] fileContent = Files.readAllBytes(filePath);
+    assertThat(fileContent).isNotEmpty();
+    assertThat(fileContent.length).isEqualTo(originalSizeBytes);
 
     return transformedSourceHeader;
   }
