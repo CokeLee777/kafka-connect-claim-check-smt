@@ -4,7 +4,9 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.S3Stora
 import com.github.cokelee777.kafka.connect.smt.common.retry.RetryConfig;
 import java.net.URI;
 import java.time.Duration;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
@@ -35,7 +37,13 @@ public class S3ClientFactory {
             .region(Region.of(config.getRegion()));
 
     if (config.getEndpointOverride() != null) {
-      builder.endpointOverride(URI.create(config.getEndpointOverride())).forcePathStyle(true);
+      // Use static credentials for LocalStack or custom S3-compatible endpoints (e.g., MinIO)
+      // These dummy credentials are required by AWS SDK but not validated by LocalStack
+      builder
+          .endpointOverride(URI.create(config.getEndpointOverride()))
+          .forcePathStyle(true)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
     }
 
     return builder.build();
