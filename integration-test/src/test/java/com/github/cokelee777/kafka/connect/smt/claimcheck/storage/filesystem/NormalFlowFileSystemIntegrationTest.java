@@ -11,6 +11,8 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -41,7 +43,7 @@ class NormalFlowFileSystemIntegrationTest extends AbstractFileSystemIntegrationT
   }
 
   @Test
-  void shouldPerformClaimCheckE2EFlow() throws IOException {
+  void shouldPerformClaimCheckE2EFlow() throws IOException, URISyntaxException {
     // Given: Common
     // Common config
     Map<String, Object> commonConfig = new HashMap<>();
@@ -108,7 +110,7 @@ class NormalFlowFileSystemIntegrationTest extends AbstractFileSystemIntegrationT
   }
 
   private Header validateTransformedSourceRecord(
-      SourceRecord transformedSourceRecord, SourceRecord initialSourceRecord) throws IOException {
+      SourceRecord transformedSourceRecord, SourceRecord initialSourceRecord) throws IOException, URISyntaxException {
     // Validate ClaimCheckSourceRecord
     assertThat(transformedSourceRecord).isNotNull();
     assertThat(transformedSourceRecord.topic()).isEqualTo(TOPIC_NAME);
@@ -140,7 +142,7 @@ class NormalFlowFileSystemIntegrationTest extends AbstractFileSystemIntegrationT
     assertThat(originalSizeBytes).isGreaterThan(0);
 
     // Verify that actual data is stored in file system
-    Path filePath = Path.of(referenceUrl.replace("file://", ""));
+    Path filePath = Path.of(new URI(referenceUrl).getPath());
     assertThat(Files.exists(filePath)).isTrue();
     byte[] fileContent = Files.readAllBytes(filePath);
     assertThat(fileContent).isNotEmpty();
