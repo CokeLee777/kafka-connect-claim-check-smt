@@ -23,7 +23,7 @@ abstract class AbstractS3WithToxiproxyIntegrationTest extends AbstractS3Integrat
   }
 
   @BeforeAll
-  static void initializeToxicproxy() throws IOException {
+  static void initializeToxiproxy() throws IOException {
     ToxiproxyClient client = new ToxiproxyClient(toxiproxy.getHost(), toxiproxy.getControlPort());
     String proxyName = "s3-proxy";
 
