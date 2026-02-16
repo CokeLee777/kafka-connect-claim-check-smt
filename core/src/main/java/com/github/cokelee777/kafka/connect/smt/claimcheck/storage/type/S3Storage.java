@@ -17,7 +17,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 
 public final class S3Storage implements CloseableClaimCheckStorage {
 
@@ -77,7 +76,7 @@ public final class S3Storage implements CloseableClaimCheckStorage {
         GetObjectRequest.builder().bucket(bucketName).key(key).build();
     try (ResponseInputStream<GetObjectResponse> s3Object = s3Client.getObject(getObjectRequest)) {
       return s3Object.readAllBytes();
-    } catch (S3Exception | IOException e) {
+    } catch (SdkException | IOException e) {
       throw new ClaimCheckRetrieveException(
           "Failed to retrieve from S3. Bucket: " + bucketName + ", Key: " + key, e);
     }
