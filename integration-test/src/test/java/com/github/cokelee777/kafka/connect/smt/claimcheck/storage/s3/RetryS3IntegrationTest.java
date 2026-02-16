@@ -11,6 +11,7 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.S3Stora
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.errors.ClaimCheckStoreException;
 import eu.rekawek.toxiproxy.model.ToxicDirection;
 import java.io.IOException;
 import java.util.HashMap;
@@ -21,7 +22,10 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -84,7 +88,7 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
 
       // When & Then
       assertThatThrownBy(() -> sourceTransform.apply(initialSourceRecord))
-          .isInstanceOf(RuntimeException.class);
+          .isInstanceOf(ClaimCheckStoreException.class);
     }
 
     @Test
@@ -100,7 +104,7 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
 
       // When & Then
       assertThatThrownBy(() -> sourceTransform.apply(initialSourceRecord))
-          .isInstanceOf(RuntimeException.class);
+          .isInstanceOf(ClaimCheckStoreException.class);
     }
   }
 

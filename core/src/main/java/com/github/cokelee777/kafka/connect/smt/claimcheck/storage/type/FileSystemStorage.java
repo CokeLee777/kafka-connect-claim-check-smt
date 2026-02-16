@@ -4,6 +4,8 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.FileSys
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.client.FileSystemClient;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.client.FileSystemClientFactory;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.errors.ClaimCheckRetrieveException;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.errors.ClaimCheckStoreException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -78,7 +80,7 @@ public final class FileSystemStorage implements ClaimCheckStorage {
       fileSystemClient.write(filePath, payload);
       return buildReferenceUrl(filePath);
     } catch (IOException e) {
-      throw new RuntimeException("Failed to write claim check file: " + filePath, e);
+      throw new ClaimCheckStoreException("Failed to write claim check file: " + filePath, e);
     }
   }
 
@@ -97,7 +99,7 @@ public final class FileSystemStorage implements ClaimCheckStorage {
     try {
       return fileSystemClient.read(realPath);
     } catch (IOException e) {
-      throw new RuntimeException("Failed to read claim check file: " + realPath, e);
+      throw new ClaimCheckRetrieveException("Failed to read claim check file: " + realPath, e);
     }
   }
 

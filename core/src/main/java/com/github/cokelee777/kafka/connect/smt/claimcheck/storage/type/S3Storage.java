@@ -3,12 +3,15 @@ package com.github.cokelee777.kafka.connect.smt.claimcheck.storage.type;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.S3StorageConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.client.S3ClientFactory;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.errors.ClaimCheckRetrieveException;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.errors.ClaimCheckStoreException;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.apache.kafka.connect.errors.DataException;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -52,8 +55,8 @@ public final class S3Storage implements CloseableClaimCheckStorage {
     try {
       s3Client.putObject(putObjectRequest, RequestBody.fromBytes(payload));
       return buildReferenceUrl(key);
-    } catch (S3Exception e) {
-      throw new RuntimeException(
+    } catch (SdkException e) {
+      throw new ClaimCheckStoreException(
           "Failed to upload to S3. Bucket: " + bucketName + ", Key: " + key, e);
     }
   }
@@ -75,7 +78,7 @@ public final class S3Storage implements CloseableClaimCheckStorage {
     try (ResponseInputStream<GetObjectResponse> s3Object = s3Client.getObject(getObjectRequest)) {
       return s3Object.readAllBytes();
     } catch (S3Exception | IOException e) {
-      throw new RuntimeException(
+      throw new ClaimCheckRetrieveException(
           "Failed to retrieve from S3. Bucket: " + bucketName + ", Key: " + key, e);
     }
   }

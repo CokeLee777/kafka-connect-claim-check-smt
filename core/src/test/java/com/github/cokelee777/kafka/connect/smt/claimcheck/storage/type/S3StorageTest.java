@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.S3StorageConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.S3StorageTestConfigProvider;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.errors.ClaimCheckStoreException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -127,7 +128,7 @@ class S3StorageTest {
           .thenThrow(S3Exception.builder().message("Test S3 Exception").build());
 
       // When & Then
-      assertThatExceptionOfType(RuntimeException.class)
+      assertThatExceptionOfType(ClaimCheckStoreException.class)
           .isThrownBy(() -> s3Storage.store(payload))
           .withMessageStartingWith("Failed to upload to S3. Bucket: test-bucket");
     }

@@ -1,6 +1,8 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.storage.filesystem;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mockStatic;
@@ -13,6 +15,8 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.FileSys
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.errors.ClaimCheckRetrieveException;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.errors.ClaimCheckStoreException;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
@@ -99,7 +103,7 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
 
         // When & Then
         assertThatThrownBy(() -> sourceTransform.apply(initialSourceRecord))
-            .isInstanceOf(RuntimeException.class);
+            .isInstanceOf(ClaimCheckStoreException.class);
       }
     }
 
@@ -123,7 +127,7 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
 
         // When & Then
         assertThatThrownBy(() -> sourceTransform.apply(initialSourceRecord))
-            .isInstanceOf(RuntimeException.class);
+            .isInstanceOf(ClaimCheckStoreException.class);
         // Should attempt only once without retry
         assertThat(writeAttemptCount.get()).isEqualTo(1);
       }
@@ -180,7 +184,7 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
             .thenThrow(new IOException("Persistent I/O error"));
 
         // When & Then
-        assertThatExceptionOfType(RuntimeException.class)
+        assertThatExceptionOfType(ClaimCheckRetrieveException.class)
             .isThrownBy(() -> sinkTransform.apply(initialSinkRecord))
             .withMessageStartingWith("Failed to read claim check file:");
       }
@@ -205,7 +209,7 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
                 });
 
         // When & Then
-        assertThatExceptionOfType(RuntimeException.class)
+        assertThatExceptionOfType(ClaimCheckRetrieveException.class)
             .isThrownBy(() -> sinkTransform.apply(initialSinkRecord))
             .withMessageStartingWith("Failed to read claim check file:");
         // Should attempt only once without retry
