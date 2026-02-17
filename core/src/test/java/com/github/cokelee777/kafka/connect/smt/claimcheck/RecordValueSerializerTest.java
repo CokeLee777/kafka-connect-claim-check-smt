@@ -252,6 +252,35 @@ class RecordValueSerializerTest {
     }
 
     @Test
+    void shouldDeserializeArrayWithSchema() {
+      // Given
+      Schema schema = SchemaBuilder.array(Schema.STRING_SCHEMA).build();
+      byte[] recordBytes = "[\"a\",\"b\",\"c\"]".getBytes(StandardCharsets.UTF_8);
+
+      // When
+      Object result = RecordValueSerializer.deserialize(schema, recordBytes);
+
+      // Then
+      assertThat(result).isEqualTo(List.of("a", "b", "c"));
+    }
+
+    @Test
+    void shouldDeserializeMapWithSchema() {
+      // Given
+      Schema schema = SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.INT32_SCHEMA).build();
+      byte[] recordBytes = "{\"a\":1,\"b\":2}".getBytes(StandardCharsets.UTF_8);
+      Map<Object, Object> expectedValue = new LinkedHashMap<>();
+      expectedValue.put("a", 1);
+      expectedValue.put("b", 2);
+
+      // When
+      Object result = RecordValueSerializer.deserialize(schema, recordBytes);
+
+      // Then
+      assertThat(result).isEqualTo(expectedValue);
+    }
+
+    @Test
     void shouldDeserializeBytesWithSchemaFromBase64() {
       // Given
       byte[] originalBytes = "hello".getBytes(StandardCharsets.UTF_8);
@@ -275,6 +304,18 @@ class RecordValueSerializerTest {
 
       // Then
       assertThat(result).isEqualTo("hello");
+    }
+
+    @Test
+    void shouldDeserializePrimitiveIntWithSchema() {
+      // Given
+      byte[] recordBytes = "42".getBytes(StandardCharsets.UTF_8);
+
+      // When
+      Object result = RecordValueSerializer.deserialize(Schema.INT32_SCHEMA, recordBytes);
+
+      // Then
+      assertThat(result).isEqualTo(42);
     }
 
     @Test
