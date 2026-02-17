@@ -47,7 +47,6 @@ class ClaimCheckSourceTransformTest {
       assertThat(transform.getConfig().getStorageType()).isEqualTo(ClaimCheckStorageType.S3.type());
       assertThat(transform.getConfig().getThresholdBytes()).isEqualTo(1024);
       assertThat(transform.getStorage()).isNotNull();
-      assertThat(transform.getRecordSerializer()).isNotNull();
     }
   }
 

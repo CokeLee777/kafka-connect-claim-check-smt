@@ -1,6 +1,7 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -15,6 +16,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -47,7 +49,6 @@ class ClaimCheckSinkTransformTest {
       // Then
       assertThat(transform.getConfig().getStorageType()).isEqualTo(ClaimCheckStorageType.S3.type());
       assertThat(transform.getStorage()).isNotNull();
-      assertThat(transform.getRecordSerializer()).isNotNull();
     }
   }
 
@@ -80,17 +81,19 @@ class ClaimCheckSinkTransformTest {
     @Test
     void shouldRestoreOriginalRecordFromSchemalessClaimCheck() {
       // Given
-      String fetchedJson = "{\"id\":1,\"name\":\"cokelee777\"}";
-      when(storage.retrieve(any())).thenReturn(fetchedJson.getBytes(StandardCharsets.UTF_8));
+      String originalPayload = "{\"id\":1,\"name\":\"cokelee777\"}";
+      when(storage.retrieve(any())).thenReturn(originalPayload.getBytes(StandardCharsets.UTF_8));
 
       String referenceUrl = "s3://test-bucket/test/path/uuid";
       Struct claimCheckValue =
           new Struct(ClaimCheckSchema.SCHEMA)
               .put(ClaimCheckSchemaFields.REFERENCE_URL, referenceUrl)
-              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, fetchedJson.length())
+              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, originalPayload.length())
               .put(ClaimCheckSchemaFields.UPLOADED_AT, System.currentTimeMillis());
+
+      String placeholderPayload = "{\"id\":0,\"name\":\"\"}";
       SinkRecord record =
-          new SinkRecord("test-topic", 0, Schema.BYTES_SCHEMA, "key", null, null, 0);
+          new SinkRecord("test-topic", 0, Schema.BYTES_SCHEMA, "key", null, placeholderPayload, 0);
       record.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
 
       // When
@@ -98,7 +101,7 @@ class ClaimCheckSinkTransformTest {
 
       // Then
       Map<String, Object> expectedValue = new HashMap<>();
-      expectedValue.put("id", 1L);
+      expectedValue.put("id", 1);
       expectedValue.put("name", "cokelee777");
 
       assertThat(originalRecord).isNotNull();
@@ -115,15 +118,14 @@ class ClaimCheckSinkTransformTest {
     @Test
     void shouldRestoreOriginalRecordFromGenericSchemaClaimCheck() {
       // Given
-      String fetchedJson =
-          "{\"schema\":{\"type\":\"struct\",\"fields\":[{\"type\":\"int64\",\"field\":\"id\"},{\"type\":\"string\",\"field\":\"name\"}],\"optional\":false,\"name\":\"payload\"},\"payload\":{\"id\":1,\"name\":\"cokelee777\"}}";
-      when(storage.retrieve(any())).thenReturn(fetchedJson.getBytes(StandardCharsets.UTF_8));
+      String originalPayload = "{\"id\":1,\"name\":\"cokelee777\"}";
+      when(storage.retrieve(any())).thenReturn(originalPayload.getBytes(StandardCharsets.UTF_8));
 
       String referenceUrl = "s3://test-bucket/test/path/uuid";
       Struct claimCheckValue =
           new Struct(ClaimCheckSchema.SCHEMA)
               .put(ClaimCheckSchemaFields.REFERENCE_URL, referenceUrl)
-              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, fetchedJson.length())
+              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, originalPayload.length())
               .put(ClaimCheckSchemaFields.UPLOADED_AT, System.currentTimeMillis());
 
       Schema valueSchema =
@@ -132,8 +134,10 @@ class ClaimCheckSinkTransformTest {
               .field("id", Schema.INT64_SCHEMA)
               .field("name", Schema.STRING_SCHEMA)
               .build();
+      String placeholderPayload = "{\"id\":0,\"name\":\"\"}";
       SinkRecord record =
-          new SinkRecord("test-topic", 0, Schema.BYTES_SCHEMA, "key", valueSchema, null, 0);
+          new SinkRecord(
+              "test-topic", 0, Schema.BYTES_SCHEMA, "key", valueSchema, placeholderPayload, 0);
       record.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
 
       // When
@@ -156,15 +160,15 @@ class ClaimCheckSinkTransformTest {
     @Test
     void shouldRestoreOriginalRecordFromDebeziumSchemaClaimCheck() {
       // Given
-      String fetchedJson =
-          "{\"schema\":{\"type\":\"struct\",\"fields\":[{\"type\":\"struct\",\"fields\":[{\"type\":\"int64\",\"field\":\"id\"},{\"type\":\"string\",\"field\":\"name\"}],\"optional\":true,\"name\":\"test.db.table.Value\",\"field\":\"before\"},{\"type\":\"struct\",\"fields\":[{\"type\":\"int64\",\"field\":\"id\"},{\"type\":\"string\",\"field\":\"name\"}],\"optional\":true,\"name\":\"test.db.table.Value\",\"field\":\"after\"},{\"type\":\"string\",\"field\":\"op\"},{\"type\":\"int64\",\"optional\":true,\"field\":\"ts_ms\"}],\"optional\":false,\"name\":\"io.debezium.connector.mysql.Envelope\"},\"payload\":{\"before\":{\"id\":1,\"name\":\"before cokelee777\"},\"after\":{\"id\":1,\"name\":\"after cokelee777\"},\"op\":\"c\",\"ts_ms\":1672531200000}}";
-      when(storage.retrieve(any())).thenReturn(fetchedJson.getBytes(StandardCharsets.UTF_8));
+      String originalPayload =
+          "{\"before\":{\"id\":1,\"name\":\"before cokelee777\"},\"after\":{\"id\":1,\"name\":\"after cokelee777\"},\"op\":\"c\",\"ts_ms\":1672531200000}";
+      when(storage.retrieve(any())).thenReturn(originalPayload.getBytes(StandardCharsets.UTF_8));
 
       String referenceUrl = "s3://test-bucket/test/path/uuid";
       Struct claimCheckValue =
           new Struct(ClaimCheckSchema.SCHEMA)
               .put(ClaimCheckSchemaFields.REFERENCE_URL, referenceUrl)
-              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, fetchedJson.length())
+              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, originalPayload.length())
               .put(ClaimCheckSchemaFields.UPLOADED_AT, System.currentTimeMillis());
 
       Schema rowSchema =
@@ -182,8 +186,11 @@ class ClaimCheckSinkTransformTest {
               .field("op", Schema.STRING_SCHEMA)
               .field("ts_ms", Schema.OPTIONAL_INT64_SCHEMA)
               .build();
+      String placeholderPayload =
+          "{\"before\":{\"id\":0,\"name\":\"\"},\"after\":{\"id\":0,\"name\":\"\"},\"op\":\"\",\"ts_ms\":0}";
       SinkRecord record =
-          new SinkRecord("test-topic", 0, Schema.BYTES_SCHEMA, "key", valueSchema, null, 0);
+          new SinkRecord(
+              "test-topic", 0, Schema.BYTES_SCHEMA, "key", valueSchema, placeholderPayload, 0);
       record.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
 
       // When
@@ -208,6 +215,52 @@ class ClaimCheckSinkTransformTest {
       assertThat(originalRecord.value()).isInstanceOf(Struct.class);
       assertThat(originalRecord.value()).isEqualTo(expectedValue);
       assertThat(originalRecord.headers().lastWithName(ClaimCheckSchema.NAME)).isNull();
+    }
+
+    @Test
+    void shouldThrowDataExceptionWhenRetrievedBytesIsNull() {
+      // Given
+      when(storage.retrieve(any())).thenReturn(null);
+
+      String referenceUrl = "s3://test-bucket/test/path/uuid";
+      String originalPayload = "{\"id\":1,\"name\":\"cokelee777\"}";
+      Struct claimCheckValue =
+          new Struct(ClaimCheckSchema.SCHEMA)
+              .put(ClaimCheckSchemaFields.REFERENCE_URL, referenceUrl)
+              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, originalPayload.length())
+              .put(ClaimCheckSchemaFields.UPLOADED_AT, System.currentTimeMillis());
+
+      String placeholderPayload = "{\"id\":0,\"name\":\"\"}";
+      SinkRecord record =
+          new SinkRecord("test-topic", 0, Schema.BYTES_SCHEMA, "key", null, placeholderPayload, 0);
+      record.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
+
+      // When & Then
+      assertThatThrownBy(() -> transform.apply(record)).isInstanceOf(DataException.class);
+    }
+
+    @Test
+    void shouldThrowDataExceptionWhenRetrievedBytesSizeMismatch() {
+      // Given
+      String originalPayload = "{\"id\":1,\"name\":\"cokelee777\"}";
+      byte[] differentPayload =
+          "{\"id\":1,\"name\":\"cokelee777-different\"}".getBytes(StandardCharsets.UTF_8);
+      when(storage.retrieve(any())).thenReturn(differentPayload);
+
+      String referenceUrl = "s3://test-bucket/test/path/uuid";
+      Struct claimCheckValue =
+          new Struct(ClaimCheckSchema.SCHEMA)
+              .put(ClaimCheckSchemaFields.REFERENCE_URL, referenceUrl)
+              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, originalPayload.length())
+              .put(ClaimCheckSchemaFields.UPLOADED_AT, System.currentTimeMillis());
+
+      String placeholderPayload = "{\"id\":0,\"name\":\"\"}";
+      SinkRecord record =
+          new SinkRecord("test-topic", 0, Schema.BYTES_SCHEMA, "key", null, placeholderPayload, 0);
+      record.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
+
+      // When & Then
+      assertThatThrownBy(() -> transform.apply(record)).isInstanceOf(DataException.class);
     }
   }
 

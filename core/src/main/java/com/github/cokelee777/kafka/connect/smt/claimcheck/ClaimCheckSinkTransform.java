@@ -5,15 +5,12 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageFactory;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.type.ClaimCheckStorage;
-import com.github.cokelee777.kafka.connect.smt.common.serialization.RecordSerializer;
-import com.github.cokelee777.kafka.connect.smt.common.serialization.RecordSerializerFactory;
 import com.github.cokelee777.kafka.connect.smt.common.utils.AutoCloseableUtils;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.data.SchemaAndValue;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
+import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
@@ -31,7 +28,6 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
 
   private ClaimCheckSinkTransformConfig config;
   private ClaimCheckStorage storage;
-  private RecordSerializer recordSerializer;
 
   public ClaimCheckSinkTransform() {}
 
@@ -41,10 +37,6 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
 
   ClaimCheckStorage getStorage() {
     return storage;
-  }
-
-  RecordSerializer getRecordSerializer() {
-    return recordSerializer;
   }
 
   @Override
@@ -58,99 +50,75 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
     }
     storage.configure(configs);
 
-    recordSerializer = RecordSerializerFactory.create();
-
     log.info("ClaimCheck sink transform configured: storage={}", config.getStorageType());
   }
 
   @Override
   public SinkRecord apply(SinkRecord record) {
-    if (record == null) {
-      return null;
+    if (record.value() == null) {
+      return record;
+    } else {
+      Header claimCheckHeader = record.headers().lastWithName(ClaimCheckSchema.NAME);
+      return apply(record, claimCheckHeader);
     }
+  }
 
-    Header claimCheckHeader = record.headers().lastWithName(ClaimCheckSchema.NAME);
-    if (claimCheckHeader == null || claimCheckHeader.value() == null) {
-      if (log.isDebugEnabled()) {
-        log.debug("No claim-check header or value found for record from topic: {}", record.topic());
-      }
+  private SinkRecord apply(SinkRecord record, Header claimCheckHeader) {
+    if (skipClaimCheck(claimCheckHeader)) {
       return record;
     }
 
-    return restoreOriginalRecord(record, claimCheckHeader.value());
+    return applyClaimCheck(record, claimCheckHeader.value());
   }
 
-  private SinkRecord restoreOriginalRecord(SinkRecord record, Object headerValue) {
-    ClaimCheckValue claimCheckValue = parseClaimCheckValue(headerValue);
-    byte[] originalRecordBytes = retrieveOriginalRecord(claimCheckValue);
-    SchemaAndValue schemaAndValue = deserializeRecord(record.topic(), originalRecordBytes);
-    if (schemaAndValue == null) {
-      throw new DataException(
-          "Failed to restore original record from claim check value (topic="
-              + record.topic()
-              + ")");
+  private boolean skipClaimCheck(Header claimCheckHeader) {
+    if (claimCheckHeader == null) {
+      if (log.isDebugEnabled()) {
+        log.debug("Claim Check Header is null, skipping claim check");
+      }
+      return true;
     }
 
-    return buildRestoredRecord(record, schemaAndValue);
+    if (claimCheckHeader.value() == null) {
+      if (log.isDebugEnabled()) {
+        log.debug("Claim Check header value is null, skipping claim check");
+      }
+      return true;
+    }
+
+    return false;
   }
 
-  private ClaimCheckValue parseClaimCheckValue(Object headerValue) {
-    return ClaimCheckValue.from(headerValue);
-  }
-
-  private byte[] retrieveOriginalRecord(ClaimCheckValue claimCheckValue) {
-    String referenceUrl = claimCheckValue.referenceUrl();
-    int originalSizeBytes = claimCheckValue.originalSizeBytes();
-
-    if (log.isDebugEnabled()) {
-      log.debug(
-          "Recovering claim check record from: {}, original size: {} bytes",
-          referenceUrl,
-          originalSizeBytes);
+  private SinkRecord applyClaimCheck(SinkRecord record, Object claimCheckHeaderValue) {
+    ClaimCheckValue claimCheckValue = ClaimCheckValue.from(claimCheckHeaderValue);
+    byte[] originalRecordValueBytes = storage.retrieve(claimCheckValue.referenceUrl());
+    if (originalRecordValueBytes == null) {
+      throw new DataException("Failed to retrieve data from: " + claimCheckValue.referenceUrl());
     }
 
-    byte[] originalRecordBytes = storage.retrieve(referenceUrl);
-    validateRetrievedPayload(originalRecordBytes, referenceUrl, originalSizeBytes);
-    return originalRecordBytes;
-  }
-
-  private void validateRetrievedPayload(
-      byte[] originalRecordBytes, String referenceUrl, int originalSizeBytes) {
-    if (originalRecordBytes == null) {
-      throw new ConnectException("Failed to retrieve data from: " + referenceUrl);
-    }
-
-    if (originalRecordBytes.length == 0 && originalSizeBytes > 0) {
-      throw new DataException("Retrieved empty data from: " + referenceUrl);
-    }
-
-    if (originalRecordBytes.length != originalSizeBytes) {
+    if (originalRecordValueBytes.length != claimCheckValue.originalSizeBytes()) {
       throw new DataException(
           String.format(
               "Data integrity violation: size mismatch for %s (expected: %d bytes, retrieved: %d bytes)",
-              referenceUrl, originalSizeBytes, originalRecordBytes.length));
+              claimCheckValue.referenceUrl(),
+              claimCheckValue.originalSizeBytes(),
+              originalRecordValueBytes.length));
     }
-  }
 
-  private SchemaAndValue deserializeRecord(String topic, byte[] originalRecordBytes) {
-    return recordSerializer.deserialize(topic, originalRecordBytes);
-  }
+    Object originalRecordValue =
+        RecordValueSerializer.deserialize(record.valueSchema(), originalRecordValueBytes);
 
-  private SinkRecord buildRestoredRecord(SinkRecord record, SchemaAndValue schemaAndValue) {
-    SinkRecord originalRecord =
-        record.newRecord(
-            record.topic(),
-            record.kafkaPartition(),
-            record.keySchema(),
-            record.key(),
-            schemaAndValue.schema(),
-            schemaAndValue.value(),
-            record.timestamp());
-
-    log.debug("Successfully recovered claim check record.");
-
-    originalRecord.headers().remove(ClaimCheckSchema.NAME);
-    return originalRecord;
+    Headers updatedHeaders = record.headers().duplicate();
+    updatedHeaders.remove(ClaimCheckSchema.NAME);
+    return record.newRecord(
+        record.topic(),
+        record.kafkaPartition(),
+        record.keySchema(),
+        record.key(),
+        record.valueSchema(),
+        originalRecordValue,
+        record.timestamp(),
+        updatedHeaders);
   }
 
   @Override

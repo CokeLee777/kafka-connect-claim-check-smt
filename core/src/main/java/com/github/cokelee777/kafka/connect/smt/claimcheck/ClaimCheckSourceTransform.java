@@ -5,8 +5,6 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageFactory;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.type.ClaimCheckStorage;
-import com.github.cokelee777.kafka.connect.smt.common.serialization.RecordSerializer;
-import com.github.cokelee777.kafka.connect.smt.common.serialization.RecordSerializerFactory;
 import com.github.cokelee777.kafka.connect.smt.common.utils.AutoCloseableUtils;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
@@ -31,7 +29,6 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
   private ClaimCheckSourceTransformConfig config;
   private ClaimCheckStorage storage;
-  private RecordSerializer recordSerializer;
 
   public ClaimCheckSourceTransform() {}
 
@@ -41,10 +38,6 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
 
   ClaimCheckStorage getStorage() {
     return storage;
-  }
-
-  RecordSerializer getRecordSerializer() {
-    return recordSerializer;
   }
 
   @Override
@@ -57,8 +50,6 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
       storage = ClaimCheckStorageFactory.create(storageType);
     }
     storage.configure(configs);
-
-    recordSerializer = RecordSerializerFactory.create();
 
     log.info(
         "ClaimCheck source transform configured: threshold={}bytes, storage={}",
@@ -86,14 +77,14 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
   }
 
   private SourceRecord applyClaimCheck(SourceRecord record, Object placeholderValue) {
-    final byte[] serializedRecord = recordSerializer.serialize(record);
+    final byte[] serializedRecord = RecordValueSerializer.serialize(record);
     final int recordSizeBytes = serializedRecord != null ? serializedRecord.length : 0;
     if (skipClaimCheck(recordSizeBytes)) {
       return record;
     }
 
-    final String referenceUrl = storeRecord(serializedRecord);
-    final Struct claimCheckValue = createClaimCheckValue(referenceUrl, recordSizeBytes);
+    final String referenceUrl = storage.store(serializedRecord);
+    final Struct claimCheckValue = ClaimCheckValue.create(referenceUrl, recordSizeBytes).toStruct();
 
     Headers updatedHeaders = record.headers().duplicate();
     updatedHeaders.add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
@@ -127,21 +118,6 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
           thresholdBytes);
     }
     return false;
-  }
-
-  private String storeRecord(byte[] serializedRecord) {
-    final String referenceUrl = storage.store(serializedRecord);
-
-    if (log.isDebugEnabled()) {
-      log.debug(
-          "Stored record of {} bytes at reference: {}", serializedRecord.length, referenceUrl);
-    }
-
-    return referenceUrl;
-  }
-
-  private Struct createClaimCheckValue(String referenceUrl, int recordSizeBytes) {
-    return ClaimCheckValue.create(referenceUrl, recordSizeBytes).toStruct();
   }
 
   @Override
