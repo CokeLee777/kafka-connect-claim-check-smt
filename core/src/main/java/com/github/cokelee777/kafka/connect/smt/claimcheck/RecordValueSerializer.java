@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.toList;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.TextNode;
 import java.io.IOException;
 import java.util.*;
 import org.apache.kafka.common.errors.SerializationException;
@@ -296,7 +297,7 @@ public class RecordValueSerializer {
         .forEachRemaining(
             entry ->
                 result.put(
-                    entry.getKey(),
+                    fromJsonNodeWithSchema(schema.keySchema(), new TextNode(entry.getKey())),
                     fromJsonNodeWithSchema(schema.valueSchema(), entry.getValue())));
     return result;
   }
