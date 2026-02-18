@@ -34,10 +34,13 @@ public final class ClaimCheckHeader {
   /**
    * Parses a {@link ClaimCheckMetadata} from a Kafka Connect {@link Header}.
    *
+   * <p>Supports both String (JSON) and Map header value types, as Kafka Connect may deserialize the
+   * header value as either type depending on the converter configuration.
+   *
    * @param header the header to parse
    * @return the parsed {@link ClaimCheckMetadata}
-   * @throws DataException if the header is null, its value is null, its value is not a String, or
-   *     the JSON is invalid
+   * @throws DataException if the header is null, its value is null, its value is not a String or
+   *     Map, or the content is invalid
    */
   public static ClaimCheckMetadata fromHeader(Header header) {
     if (header == null || header.value() == null) {
@@ -55,6 +58,7 @@ public final class ClaimCheckHeader {
     }
 
     throw new DataException(
-        "Expected String header value, got: " + value.getClass().getSimpleName());
+        "Unsupported header value type: expected String or Map, got: "
+            + value.getClass().getSimpleName());
   }
 }

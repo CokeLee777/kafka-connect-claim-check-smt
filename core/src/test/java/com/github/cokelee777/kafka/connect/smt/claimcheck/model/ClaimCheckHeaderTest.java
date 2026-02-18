@@ -96,18 +96,6 @@ class ClaimCheckHeaderTest {
     }
 
     @Test
-    void shouldThrowExceptionWhenHeaderValueIsNotString() {
-      // Given
-      Header header = mock(Header.class);
-      when(header.value()).thenReturn(12345);
-
-      // When & Then
-      assertThatExceptionOfType(DataException.class)
-          .isThrownBy(() -> ClaimCheckHeader.fromHeader(header))
-          .withMessage("Expected String header value, got: Integer");
-    }
-
-    @Test
     void shouldParseClaimCheckMetadataFromMapHeader() {
       // Given
       Map<String, Object> map = new LinkedHashMap<>();
@@ -135,7 +123,7 @@ class ClaimCheckHeaderTest {
       // When & Then
       assertThatExceptionOfType(DataException.class)
           .isThrownBy(() -> ClaimCheckHeader.fromHeader(header))
-          .withMessage("Expected String header value, got: Integer");
+          .withMessage("Unsupported header value type: expected String or Map, got: Integer");
     }
   }
 }

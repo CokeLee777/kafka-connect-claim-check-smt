@@ -85,6 +85,7 @@ public record ClaimCheckMetadata(String referenceUrl, int originalSizeBytes, lon
       if (referenceUrlNode == null || originalSizeBytesNode == null || uploadedAtNode == null) {
         throw new DataException("Missing required fields in claim check JSON");
       }
+
       if (!referenceUrlNode.isTextual()) {
         throw new DataException(
             "Invalid type for '"
@@ -92,6 +93,7 @@ public record ClaimCheckMetadata(String referenceUrl, int originalSizeBytes, lon
                 + "': expected STRING, got "
                 + referenceUrlNode.getNodeType());
       }
+
       if (!originalSizeBytesNode.isInt()) {
         throw new DataException(
             "Invalid type for '"
@@ -99,6 +101,7 @@ public record ClaimCheckMetadata(String referenceUrl, int originalSizeBytes, lon
                 + "': expected INT, got "
                 + originalSizeBytesNode.getNodeType());
       }
+
       if (!uploadedAtNode.isIntegralNumber()) {
         throw new DataException(
             "Invalid type for '"
@@ -117,6 +120,16 @@ public record ClaimCheckMetadata(String referenceUrl, int originalSizeBytes, lon
     }
   }
 
+  /**
+   * Parses a {@link ClaimCheckMetadata} from a {@link Map}.
+   *
+   * <p>This handles the case where Kafka Connect deserializes a JSON string header value into a
+   * {@link Map} instead of a {@link String}, depending on the converter configuration.
+   *
+   * @param map the map to parse
+   * @return the parsed {@link ClaimCheckMetadata}
+   * @throws DataException if required fields are missing or contain invalid types
+   */
   public static ClaimCheckMetadata fromMap(Map<?, ?> map) {
     Object referenceUrlObj = map.get(ClaimCheckHeaderFields.REFERENCE_URL);
     Object originalSizeBytesObj = map.get(ClaimCheckHeaderFields.ORIGINAL_SIZE_BYTES);
@@ -125,6 +138,7 @@ public record ClaimCheckMetadata(String referenceUrl, int originalSizeBytes, lon
     if (referenceUrlObj == null || originalSizeBytesObj == null || uploadedAtObj == null) {
       throw new DataException("Missing required fields in claim check Map");
     }
+
     if (!(referenceUrlObj instanceof String referenceUrl)) {
       throw new DataException(
           "Invalid type for '"
