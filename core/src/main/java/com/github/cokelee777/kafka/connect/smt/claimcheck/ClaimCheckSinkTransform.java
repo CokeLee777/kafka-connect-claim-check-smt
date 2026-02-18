@@ -1,8 +1,8 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck;
 
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSinkTransformConfig;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckHeader;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckMetadata;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageFactory;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.type.ClaimCheckStorage;
 import com.github.cokelee777.kafka.connect.smt.common.utils.AutoCloseableUtils;
@@ -58,7 +58,7 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
     if (record.value() == null) {
       return record;
     } else {
-      Header claimCheckHeader = record.headers().lastWithName(ClaimCheckSchema.NAME);
+      Header claimCheckHeader = record.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
       return apply(record, claimCheckHeader);
     }
   }
@@ -68,7 +68,7 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
       return record;
     }
 
-    return applyClaimCheck(record, claimCheckHeader.value());
+    return applyClaimCheck(record, claimCheckHeader);
   }
 
   private boolean skipClaimCheck(Header claimCheckHeader) {
@@ -89,19 +89,19 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
     return false;
   }
 
-  private SinkRecord applyClaimCheck(SinkRecord record, Object claimCheckHeaderValue) {
-    ClaimCheckValue claimCheckValue = ClaimCheckValue.from(claimCheckHeaderValue);
-    byte[] originalRecordValueBytes = storage.retrieve(claimCheckValue.referenceUrl());
+  private SinkRecord applyClaimCheck(SinkRecord record, Header claimCheckHeader) {
+    ClaimCheckMetadata claimCheckMetadata = ClaimCheckHeader.fromHeader(claimCheckHeader);
+    byte[] originalRecordValueBytes = storage.retrieve(claimCheckMetadata.referenceUrl());
     if (originalRecordValueBytes == null) {
-      throw new DataException("Failed to retrieve data from: " + claimCheckValue.referenceUrl());
+      throw new DataException("Failed to retrieve data from: " + claimCheckMetadata.referenceUrl());
     }
 
-    if (originalRecordValueBytes.length != claimCheckValue.originalSizeBytes()) {
+    if (originalRecordValueBytes.length != claimCheckMetadata.originalSizeBytes()) {
       throw new DataException(
           String.format(
               "Data integrity violation: size mismatch for %s (expected: %d bytes, retrieved: %d bytes)",
-              claimCheckValue.referenceUrl(),
-              claimCheckValue.originalSizeBytes(),
+              claimCheckMetadata.referenceUrl(),
+              claimCheckMetadata.originalSizeBytes(),
               originalRecordValueBytes.length));
     }
 
@@ -109,7 +109,7 @@ public class ClaimCheckSinkTransform implements Transformation<SinkRecord> {
         RecordValueSerializer.deserialize(record.valueSchema(), originalRecordValueBytes);
 
     Headers updatedHeaders = record.headers().duplicate();
-    updatedHeaders.remove(ClaimCheckSchema.NAME);
+    updatedHeaders.remove(ClaimCheckHeader.HEADER_KEY);
     return record.newRecord(
         record.topic(),
         record.kafkaPartition(),

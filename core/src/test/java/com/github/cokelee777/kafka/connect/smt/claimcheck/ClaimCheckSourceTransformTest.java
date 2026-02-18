@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.*;
 
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckHeader;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.type.S3Storage;
 import java.util.HashMap;
@@ -85,10 +85,11 @@ class ClaimCheckSourceTransformTest {
       assertThat(claimCheckRecord.key()).isEqualTo("key");
       assertThat(claimCheckRecord.valueSchema()).isNull();
       assertThat(claimCheckRecord.value()).isNull();
-      Header claimCheckHeader = claimCheckRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+      Header claimCheckHeader =
+          claimCheckRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
       assertThat(claimCheckHeader).isNotNull();
-      assertThat(claimCheckHeader.key()).isEqualTo(ClaimCheckSchema.NAME);
-      assertThat(claimCheckHeader.schema()).isEqualTo(ClaimCheckSchema.SCHEMA);
+      assertThat(claimCheckHeader.key()).isEqualTo(ClaimCheckHeader.HEADER_KEY);
+      assertThat(claimCheckHeader.schema()).isEqualTo(Schema.STRING_SCHEMA);
     }
 
     @Test
@@ -119,10 +120,11 @@ class ClaimCheckSourceTransformTest {
       assertThat(claimCheckRecord.valueSchema()).isEqualTo(valueSchema);
       assertThat(claimCheckRecord.value()).isNotNull();
       assertThat(claimCheckRecord.value()).isInstanceOf(Struct.class);
-      Header claimCheckHeader = claimCheckRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+      Header claimCheckHeader =
+          claimCheckRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
       assertThat(claimCheckHeader).isNotNull();
-      assertThat(claimCheckHeader.key()).isEqualTo(ClaimCheckSchema.NAME);
-      assertThat(claimCheckHeader.schema()).isEqualTo(ClaimCheckSchema.SCHEMA);
+      assertThat(claimCheckHeader.key()).isEqualTo(ClaimCheckHeader.HEADER_KEY);
+      assertThat(claimCheckHeader.schema()).isEqualTo(Schema.STRING_SCHEMA);
     }
 
     @Test
@@ -170,10 +172,11 @@ class ClaimCheckSourceTransformTest {
       assertThat(claimCheckRecord.valueSchema()).isEqualTo(valueSchema);
       assertThat(claimCheckRecord.value()).isNotNull();
       assertThat(claimCheckRecord.value()).isInstanceOf(Struct.class);
-      Header claimCheckHeader = claimCheckRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+      Header claimCheckHeader =
+          claimCheckRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
       assertThat(claimCheckHeader).isNotNull();
-      assertThat(claimCheckHeader.key()).isEqualTo(ClaimCheckSchema.NAME);
-      assertThat(claimCheckHeader.schema()).isEqualTo(ClaimCheckSchema.SCHEMA);
+      assertThat(claimCheckHeader.key()).isEqualTo(ClaimCheckHeader.HEADER_KEY);
+      assertThat(claimCheckHeader.schema()).isEqualTo(Schema.STRING_SCHEMA);
     }
 
     @Test
@@ -208,10 +211,11 @@ class ClaimCheckSourceTransformTest {
       assertThat(customHeader.value()).isEqualTo("custom-value");
       assertThat(customHeader.schema()).isEqualTo(Schema.STRING_SCHEMA);
 
-      Header claimCheckHeader = claimCheckRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+      Header claimCheckHeader =
+          claimCheckRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
       assertThat(claimCheckHeader).isNotNull();
-      assertThat(claimCheckHeader.key()).isEqualTo(ClaimCheckSchema.NAME);
-      assertThat(claimCheckHeader.schema()).isEqualTo(ClaimCheckSchema.SCHEMA);
+      assertThat(claimCheckHeader.key()).isEqualTo(ClaimCheckHeader.HEADER_KEY);
+      assertThat(claimCheckHeader.schema()).isEqualTo(Schema.STRING_SCHEMA);
     }
   }
 

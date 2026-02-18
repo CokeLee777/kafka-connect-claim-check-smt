@@ -1,14 +1,15 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSinkTransform;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSourceTransform;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSinkTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSourceTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.S3StorageConfig;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckHeader;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckMetadata;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import java.io.IOException;
 import java.net.URI;
@@ -133,16 +134,26 @@ class NormalFlowS3IntegrationTest extends AbstractS3IntegrationTest {
 
     // Validate ClaimCheckSourceHeader
     Header transformedSourceHeader =
-        transformedSourceRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+        transformedSourceRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
     assertThat(transformedSourceHeader).isNotNull();
-    assertThat(transformedSourceHeader.key()).isEqualTo(ClaimCheckSchema.NAME);
-    assertThat(transformedSourceHeader.schema()).isEqualTo(ClaimCheckSchema.SCHEMA);
-    assertThat(transformedSourceHeader.value()).isInstanceOf(Struct.class);
+    assertThat(transformedSourceHeader.key()).isEqualTo(ClaimCheckHeader.HEADER_KEY);
+    assertThat(transformedSourceHeader.schema()).isEqualTo(Schema.STRING_SCHEMA);
+    assertThat(transformedSourceHeader.value()).isInstanceOf(String.class);
+    assertThatNoException()
+        .isThrownBy(
+            () -> {
+              ClaimCheckMetadata claimCheckMetadata =
+                  ClaimCheckHeader.fromHeader(transformedSourceHeader);
+              assertThat(claimCheckMetadata).isNotNull();
+              assertThat(claimCheckMetadata.referenceUrl()).isNotNull();
+              assertThat(claimCheckMetadata.originalSizeBytes()).isNotZero();
+              assertThat(claimCheckMetadata.uploadedAt()).isNotZero();
+            });
 
     // Validate actual data
-    ClaimCheckValue claimCheckValue = ClaimCheckValue.from(transformedSourceHeader.value());
-    String referenceUrl = claimCheckValue.referenceUrl();
-    int originalSizeBytes = claimCheckValue.originalSizeBytes();
+    ClaimCheckMetadata claimCheckMetadata = ClaimCheckHeader.fromHeader(transformedSourceHeader);
+    String referenceUrl = claimCheckMetadata.referenceUrl();
+    int originalSizeBytes = claimCheckMetadata.originalSizeBytes();
 
     assertThat(referenceUrl).startsWith("s3://" + BUCKET_NAME + "/");
     assertThat(originalSizeBytes).isGreaterThan(0);
@@ -176,7 +187,8 @@ class NormalFlowS3IntegrationTest extends AbstractS3IntegrationTest {
     assertThat(restoredValue).isEqualTo(initialSourceRecord.value());
 
     // Verify that ClaimCheck header is removed
-    Header claimCheckSinkHeader = restoredSinkRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+    Header claimCheckSinkHeader =
+        restoredSinkRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
     assertThat(claimCheckSinkHeader).isNull();
   }
 }
