@@ -6,14 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchemaFields;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckHeader;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckMetadata;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.type.S3Storage;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
@@ -85,16 +86,14 @@ class ClaimCheckSinkTransformTest {
       when(storage.retrieve(any())).thenReturn(originalPayload.getBytes(StandardCharsets.UTF_8));
 
       String referenceUrl = "s3://test-bucket/test/path/uuid";
-      Struct claimCheckValue =
-          new Struct(ClaimCheckSchema.SCHEMA)
-              .put(ClaimCheckSchemaFields.REFERENCE_URL, referenceUrl)
-              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, originalPayload.length())
-              .put(ClaimCheckSchemaFields.UPLOADED_AT, System.currentTimeMillis());
+      SchemaAndValue claimCheckHeader =
+          ClaimCheckHeader.toHeader(
+              ClaimCheckMetadata.create(referenceUrl, originalPayload.length()));
 
       String placeholderPayload = "{\"id\":0,\"name\":\"\"}";
       SinkRecord record =
           new SinkRecord("test-topic", 0, Schema.BYTES_SCHEMA, "key", null, placeholderPayload, 0);
-      record.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
+      record.headers().add(ClaimCheckHeader.HEADER_KEY, claimCheckHeader);
 
       // When
       SinkRecord originalRecord = transform.apply(record);
@@ -112,7 +111,7 @@ class ClaimCheckSinkTransformTest {
       assertThat(originalRecord.value()).isNotNull();
       assertThat(originalRecord.value()).isInstanceOf(Map.class);
       assertThat(originalRecord.value()).isEqualTo(expectedValue);
-      assertThat(originalRecord.headers().lastWithName(ClaimCheckSchema.NAME)).isNull();
+      assertThat(originalRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY)).isNull();
     }
 
     @Test
@@ -122,11 +121,9 @@ class ClaimCheckSinkTransformTest {
       when(storage.retrieve(any())).thenReturn(originalPayload.getBytes(StandardCharsets.UTF_8));
 
       String referenceUrl = "s3://test-bucket/test/path/uuid";
-      Struct claimCheckValue =
-          new Struct(ClaimCheckSchema.SCHEMA)
-              .put(ClaimCheckSchemaFields.REFERENCE_URL, referenceUrl)
-              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, originalPayload.length())
-              .put(ClaimCheckSchemaFields.UPLOADED_AT, System.currentTimeMillis());
+      SchemaAndValue claimCheckHeader =
+          ClaimCheckHeader.toHeader(
+              ClaimCheckMetadata.create(referenceUrl, originalPayload.length()));
 
       Schema valueSchema =
           SchemaBuilder.struct()
@@ -138,7 +135,7 @@ class ClaimCheckSinkTransformTest {
       SinkRecord record =
           new SinkRecord(
               "test-topic", 0, Schema.BYTES_SCHEMA, "key", valueSchema, placeholderPayload, 0);
-      record.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
+      record.headers().add(ClaimCheckHeader.HEADER_KEY, claimCheckHeader);
 
       // When
       SinkRecord originalRecord = transform.apply(record);
@@ -154,7 +151,7 @@ class ClaimCheckSinkTransformTest {
       assertThat(originalRecord.value()).isNotNull();
       assertThat(originalRecord.value()).isInstanceOf(Struct.class);
       assertThat(originalRecord.value()).isEqualTo(expectedValue);
-      assertThat(originalRecord.headers().lastWithName(ClaimCheckSchema.NAME)).isNull();
+      assertThat(originalRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY)).isNull();
     }
 
     @Test
@@ -165,11 +162,9 @@ class ClaimCheckSinkTransformTest {
       when(storage.retrieve(any())).thenReturn(originalPayload.getBytes(StandardCharsets.UTF_8));
 
       String referenceUrl = "s3://test-bucket/test/path/uuid";
-      Struct claimCheckValue =
-          new Struct(ClaimCheckSchema.SCHEMA)
-              .put(ClaimCheckSchemaFields.REFERENCE_URL, referenceUrl)
-              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, originalPayload.length())
-              .put(ClaimCheckSchemaFields.UPLOADED_AT, System.currentTimeMillis());
+      SchemaAndValue claimCheckHeader =
+          ClaimCheckHeader.toHeader(
+              ClaimCheckMetadata.create(referenceUrl, originalPayload.length()));
 
       Schema rowSchema =
           SchemaBuilder.struct()
@@ -191,7 +186,7 @@ class ClaimCheckSinkTransformTest {
       SinkRecord record =
           new SinkRecord(
               "test-topic", 0, Schema.BYTES_SCHEMA, "key", valueSchema, placeholderPayload, 0);
-      record.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
+      record.headers().add(ClaimCheckHeader.HEADER_KEY, claimCheckHeader);
 
       // When
       SinkRecord originalRecord = transform.apply(record);
@@ -214,7 +209,7 @@ class ClaimCheckSinkTransformTest {
       assertThat(originalRecord.value()).isNotNull();
       assertThat(originalRecord.value()).isInstanceOf(Struct.class);
       assertThat(originalRecord.value()).isEqualTo(expectedValue);
-      assertThat(originalRecord.headers().lastWithName(ClaimCheckSchema.NAME)).isNull();
+      assertThat(originalRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY)).isNull();
     }
 
     @Test
@@ -224,16 +219,14 @@ class ClaimCheckSinkTransformTest {
 
       String referenceUrl = "s3://test-bucket/test/path/uuid";
       String originalPayload = "{\"id\":1,\"name\":\"cokelee777\"}";
-      Struct claimCheckValue =
-          new Struct(ClaimCheckSchema.SCHEMA)
-              .put(ClaimCheckSchemaFields.REFERENCE_URL, referenceUrl)
-              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, originalPayload.length())
-              .put(ClaimCheckSchemaFields.UPLOADED_AT, System.currentTimeMillis());
+      SchemaAndValue claimCheckHeader =
+          ClaimCheckHeader.toHeader(
+              ClaimCheckMetadata.create(referenceUrl, originalPayload.length()));
 
       String placeholderPayload = "{\"id\":0,\"name\":\"\"}";
       SinkRecord record =
           new SinkRecord("test-topic", 0, Schema.BYTES_SCHEMA, "key", null, placeholderPayload, 0);
-      record.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
+      record.headers().add(ClaimCheckHeader.HEADER_KEY, claimCheckHeader);
 
       // When & Then
       assertThatThrownBy(() -> transform.apply(record)).isInstanceOf(DataException.class);
@@ -248,16 +241,14 @@ class ClaimCheckSinkTransformTest {
       when(storage.retrieve(any())).thenReturn(differentPayload);
 
       String referenceUrl = "s3://test-bucket/test/path/uuid";
-      Struct claimCheckValue =
-          new Struct(ClaimCheckSchema.SCHEMA)
-              .put(ClaimCheckSchemaFields.REFERENCE_URL, referenceUrl)
-              .put(ClaimCheckSchemaFields.ORIGINAL_SIZE_BYTES, originalPayload.length())
-              .put(ClaimCheckSchemaFields.UPLOADED_AT, System.currentTimeMillis());
+      SchemaAndValue claimCheckHeader =
+          ClaimCheckHeader.toHeader(
+              ClaimCheckMetadata.create(referenceUrl, originalPayload.length()));
 
       String placeholderPayload = "{\"id\":0,\"name\":\"\"}";
       SinkRecord record =
           new SinkRecord("test-topic", 0, Schema.BYTES_SCHEMA, "key", null, placeholderPayload, 0);
-      record.headers().add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
+      record.headers().add(ClaimCheckHeader.HEADER_KEY, claimCheckHeader);
 
       // When & Then
       assertThatThrownBy(() -> transform.apply(record)).isInstanceOf(DataException.class);

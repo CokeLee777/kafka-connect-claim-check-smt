@@ -1,8 +1,6 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.storage.filesystem;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mockStatic;
@@ -12,8 +10,8 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSourceTransf
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSinkTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSourceTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.FileSystemStorageConfig;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckHeader;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckMetadata;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.errors.ClaimCheckRetrieveException;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.errors.ClaimCheckStoreException;
@@ -230,7 +228,7 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
       SourceRecord transformedSourceRecord = sourceTransform.apply(initialSourceRecord);
 
       Header transformedSourceHeader =
-          transformedSourceRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+          transformedSourceRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
 
       return generateSinkRecord(transformedSourceRecord, transformedSourceHeader);
     }
@@ -285,7 +283,7 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
     return sinkRecord;
   }
 
-  private Header validateTransformedSourceRecord(
+  private void validateTransformedSourceRecord(
       SourceRecord transformedSourceRecord, SourceRecord initialSourceRecord) throws IOException {
     // Validate ClaimCheckSourceRecord
     assertThat(transformedSourceRecord).isNotNull();
@@ -303,19 +301,21 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
 
     // Validate ClaimCheckSourceHeader
     Header transformedSourceHeader =
-        transformedSourceRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+        transformedSourceRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
     assertThat(transformedSourceHeader).isNotNull();
-    assertThat(transformedSourceHeader.key()).isEqualTo(ClaimCheckSchema.NAME);
-    assertThat(transformedSourceHeader.schema()).isEqualTo(ClaimCheckSchema.SCHEMA);
-    assertThat(transformedSourceHeader.value()).isInstanceOf(Struct.class);
+    assertThat(transformedSourceHeader.key()).isEqualTo(ClaimCheckHeader.HEADER_KEY);
+    assertThat(transformedSourceHeader.schema()).isEqualTo(Schema.STRING_SCHEMA);
+    assertThat(transformedSourceHeader.value()).isInstanceOf(String.class);
 
     // Validate actual data
-    ClaimCheckValue claimCheckValue = ClaimCheckValue.from(transformedSourceHeader.value());
-    String referenceUrl = claimCheckValue.referenceUrl();
-    int originalSizeBytes = claimCheckValue.originalSizeBytes();
+    ClaimCheckMetadata claimCheckMetadata = ClaimCheckHeader.fromHeader(transformedSourceHeader);
+    String referenceUrl = claimCheckMetadata.referenceUrl();
+    int originalSizeBytes = claimCheckMetadata.originalSizeBytes();
+    long uploadedAt = claimCheckMetadata.uploadedAt();
 
     assertThat(referenceUrl).startsWith("file://" + TEMP_DIR_PATH.toRealPath() + "/");
     assertThat(originalSizeBytes).isGreaterThan(0);
+    assertThat(uploadedAt).isGreaterThan(0);
 
     // Verify that actual data is stored in file system
     Path filePath = Path.of(URI.create(referenceUrl).getPath());
@@ -323,8 +323,6 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
     byte[] fileContent = Files.readAllBytes(filePath);
     assertThat(fileContent).isNotEmpty();
     assertThat(fileContent.length).isEqualTo(originalSizeBytes);
-
-    return transformedSourceHeader;
   }
 
   private void validateRestoredSinkRecord(
@@ -344,7 +342,8 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
     assertThat(restoredValue).isEqualTo(initialSourceRecord.value());
 
     // Verify that ClaimCheck header is removed
-    Header claimCheckSinkHeader = restoredSinkRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+    Header claimCheckSinkHeader =
+        restoredSinkRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
     assertThat(claimCheckSinkHeader).isNull();
   }
 }

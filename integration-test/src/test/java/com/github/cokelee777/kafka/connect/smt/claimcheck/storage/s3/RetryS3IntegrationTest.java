@@ -1,15 +1,14 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck.storage.s3;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 
 import com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSinkTransform;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSourceTransform;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSinkTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSourceTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.S3StorageConfig;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckHeader;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckMetadata;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.errors.ClaimCheckStoreException;
 import eu.rekawek.toxiproxy.model.ToxicDirection;
@@ -186,7 +185,7 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
       SourceRecord transformedSourceRecord = sourceTransform.apply(initialSourceRecord);
 
       Header transformedSourceHeader =
-          transformedSourceRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+          transformedSourceRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
 
       return generateSinkRecord(transformedSourceRecord, transformedSourceHeader);
     }
@@ -243,7 +242,7 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
     return sinkRecord;
   }
 
-  private Header validateTransformedSourceRecord(
+  private void validateTransformedSourceRecord(
       SourceRecord transformedSourceRecord, SourceRecord initialSourceRecord) throws IOException {
     // Validate ClaimCheckSourceRecord
     assertThat(transformedSourceRecord).isNotNull();
@@ -261,19 +260,23 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
 
     // Validate ClaimCheckSourceHeader
     Header transformedSourceHeader =
-        transformedSourceRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+        transformedSourceRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
     assertThat(transformedSourceHeader).isNotNull();
-    assertThat(transformedSourceHeader.key()).isEqualTo(ClaimCheckSchema.NAME);
-    assertThat(transformedSourceHeader.schema()).isEqualTo(ClaimCheckSchema.SCHEMA);
-    assertThat(transformedSourceHeader.value()).isInstanceOf(Struct.class);
+    assertThat(transformedSourceHeader.key()).isEqualTo(ClaimCheckHeader.HEADER_KEY);
+    assertThat(transformedSourceHeader.schema()).isEqualTo(Schema.STRING_SCHEMA);
+    assertThat(transformedSourceHeader.value()).isInstanceOf(String.class);
 
     // Validate actual data
-    ClaimCheckValue claimCheckValue = ClaimCheckValue.from(transformedSourceHeader.value());
-    String referenceUrl = claimCheckValue.referenceUrl();
-    int originalSizeBytes = claimCheckValue.originalSizeBytes();
+    ClaimCheckMetadata claimCheckMetadata = ClaimCheckHeader.fromHeader(transformedSourceHeader);
+    assertThat(claimCheckMetadata).isNotNull();
+
+    String referenceUrl = claimCheckMetadata.referenceUrl();
+    int originalSizeBytes = claimCheckMetadata.originalSizeBytes();
+    long uploadedAt = claimCheckMetadata.uploadedAt();
 
     assertThat(referenceUrl).startsWith("s3://" + BUCKET_NAME + "/");
     assertThat(originalSizeBytes).isGreaterThan(0);
+    assertThat(uploadedAt).isGreaterThan(0);
 
     // Verify that actual data is stored in S3
     String key = referenceUrl.substring(("s3://" + BUCKET_NAME + "/").length());
@@ -283,8 +286,6 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
       assertThat(serializedRecord).isNotEmpty();
       assertThat(serializedRecord.length).isEqualTo(originalSizeBytes);
     }
-
-    return transformedSourceHeader;
   }
 
   private void validateRestoredSinkRecord(
@@ -304,7 +305,8 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
     assertThat(restoredValue).isEqualTo(initialSourceRecord.value());
 
     // Verify that ClaimCheck header is removed
-    Header claimCheckSinkHeader = restoredSinkRecord.headers().lastWithName(ClaimCheckSchema.NAME);
+    Header claimCheckSinkHeader =
+        restoredSinkRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
     assertThat(claimCheckSinkHeader).isNull();
   }
 }

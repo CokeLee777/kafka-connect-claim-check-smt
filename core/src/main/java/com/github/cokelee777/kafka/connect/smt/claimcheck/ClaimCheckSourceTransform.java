@@ -1,14 +1,14 @@
 package com.github.cokelee777.kafka.connect.smt.claimcheck;
 
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSourceTransformConfig;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckSchema;
-import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckValue;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckHeader;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckMetadata;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageFactory;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.type.ClaimCheckStorage;
 import com.github.cokelee777.kafka.connect.smt.common.utils.AutoCloseableUtils;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.Transformation;
@@ -77,17 +77,18 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
   }
 
   private SourceRecord applyClaimCheck(SourceRecord record, Object placeholderValue) {
-    final byte[] serializedRecord = RecordValueSerializer.serialize(record);
-    final int recordSizeBytes = serializedRecord != null ? serializedRecord.length : 0;
+    byte[] serializedRecord = RecordValueSerializer.serialize(record);
+    int recordSizeBytes = serializedRecord != null ? serializedRecord.length : 0;
     if (skipClaimCheck(recordSizeBytes)) {
       return record;
     }
 
-    final String referenceUrl = storage.store(serializedRecord);
-    final Struct claimCheckValue = ClaimCheckValue.create(referenceUrl, recordSizeBytes).toStruct();
+    String referenceUrl = storage.store(serializedRecord);
+    SchemaAndValue claimCheckHeader =
+        ClaimCheckHeader.toHeader(ClaimCheckMetadata.create(referenceUrl, recordSizeBytes));
 
     Headers updatedHeaders = record.headers().duplicate();
-    updatedHeaders.add(ClaimCheckSchema.NAME, claimCheckValue, ClaimCheckSchema.SCHEMA);
+    updatedHeaders.add(ClaimCheckHeader.HEADER_KEY, claimCheckHeader);
     return record.newRecord(
         record.topic(),
         record.kafkaPartition(),
@@ -100,7 +101,7 @@ public class ClaimCheckSourceTransform implements Transformation<SourceRecord> {
   }
 
   private boolean skipClaimCheck(int recordSizeBytes) {
-    final int thresholdBytes = config.getThresholdBytes();
+    int thresholdBytes = config.getThresholdBytes();
     if (recordSizeBytes <= thresholdBytes) {
       if (log.isDebugEnabled()) {
         log.debug(
