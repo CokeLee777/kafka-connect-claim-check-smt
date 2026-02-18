@@ -102,7 +102,7 @@ public record ClaimCheckMetadata(String referenceUrl, int originalSizeBytes, lon
                 + originalSizeBytesNode.getNodeType());
       }
 
-      if (!uploadedAtNode.isIntegralNumber()) {
+      if (!uploadedAtNode.isLong()) {
         throw new DataException(
             "Invalid type for '"
                 + ClaimCheckHeaderFields.UPLOADED_AT
