@@ -7,6 +7,7 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSourceTransf
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSinkTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSourceTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.FileSystemStorageConfig;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.fixture.record.RecordFactory;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckHeader;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckMetadata;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
@@ -17,7 +18,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -57,7 +57,11 @@ class NormalFlowFileSystemIntegrationTest extends AbstractFileSystemIntegrationT
         ClaimCheckStorageType.FILESYSTEM.type());
     sourceTransform.configure(sourceTransformConfig);
 
-    SourceRecord initialSourceRecord = generateSourceRecord();
+    SourceRecord initialSourceRecord =
+        RecordFactory.sourceRecord(
+            TOPIC_NAME,
+            Map.of("id", Schema.INT64_SCHEMA, "name", Schema.STRING_SCHEMA),
+            Map.of("id", 1L, "name", "cokelee777"));
 
     // When: Source
     SourceRecord transformedSourceRecord = sourceTransform.apply(initialSourceRecord);
@@ -73,39 +77,14 @@ class NormalFlowFileSystemIntegrationTest extends AbstractFileSystemIntegrationT
         ClaimCheckSinkTransformConfig.STORAGE_TYPE_CONFIG, ClaimCheckStorageType.FILESYSTEM.type());
     sinkTransform.configure(sinkTransformConfig);
 
-    SinkRecord initialSinkRecord =
-        generateSinkRecord(transformedSourceRecord, transformedSourceHeader);
+    SinkRecord sinkRecord =
+        RecordFactory.sinkRecord(transformedSourceRecord, transformedSourceHeader);
 
     // When: Sink
-    SinkRecord restoredSinkRecord = sinkTransform.apply(initialSinkRecord);
+    SinkRecord transformedSinkRecord = sinkTransform.apply(sinkRecord);
 
     // Then: Sink
-    validateRestoredSinkRecord(restoredSinkRecord, initialSourceRecord);
-  }
-
-  private SourceRecord generateSourceRecord() {
-    Schema schema =
-        SchemaBuilder.struct()
-            .field("id", Schema.INT64_SCHEMA)
-            .field("name", Schema.STRING_SCHEMA)
-            .build();
-    Struct value = new Struct(schema).put("id", 1L).put("name", "cokelee777");
-    return new SourceRecord(null, null, TOPIC_NAME, null, null, schema, value);
-  }
-
-  private SinkRecord generateSinkRecord(
-      SourceRecord transformedSourceRecord, Header transformedSourceHeader) {
-    SinkRecord sinkRecord =
-        new SinkRecord(
-            transformedSourceRecord.topic(),
-            0,
-            transformedSourceRecord.keySchema(),
-            transformedSourceRecord.key(),
-            transformedSourceRecord.valueSchema(),
-            transformedSourceRecord.value(),
-            0);
-    sinkRecord.headers().add(transformedSourceHeader);
-    return sinkRecord;
+    validateRestoredSinkRecord(transformedSinkRecord, initialSourceRecord);
   }
 
   private Header validateTransformedSourceRecord(
