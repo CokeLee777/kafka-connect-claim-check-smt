@@ -50,7 +50,7 @@ structured data using Kafka Connect's `Schema` and `Struct` API.
 
 | Connector                               | Tested Version | Status     | Notes                                                                                |
 |-----------------------------------------|----------------|------------|--------------------------------------------------------------------------------------|
-| **Debezium MySQL CDC Source Connector** | 2.1.4          | ✅ Verified | Tested with Debezium CDC envelope (before/after/source/op) and deeply nested schemas |
+| **Debezium MySQL CDC Source Connector** | 2.6.2          | ✅ Verified | Tested with Debezium CDC envelope (before/after/source/op) and deeply nested schemas |
 | **Confluent JDBC Source Connector**     | 10.7.6         | ✅ Verified | Tested with complex nested Struct schemas (non-CDC, snapshot-based records)          |
 
 *Sink Connectors (ClaimCheckSinkTransform):*
