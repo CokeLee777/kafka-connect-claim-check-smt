@@ -10,6 +10,7 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSourceTransf
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSinkTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSourceTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.FileSystemStorageConfig;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.fixture.record.RecordFactory;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckHeader;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckMetadata;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
@@ -23,7 +24,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -59,7 +59,11 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
       // Given
       Map<String, Object> sourceTransformConfig = generateSourceConfigWithRetry(3);
       sourceTransform.configure(sourceTransformConfig);
-      SourceRecord initialSourceRecord = generateSourceRecord();
+      SourceRecord initialSourceRecord =
+          RecordFactory.sourceRecord(
+              TOPIC_NAME,
+              Map.of("id", Schema.INT64_SCHEMA, "name", Schema.STRING_SCHEMA),
+              Map.of("id", 1L, "name", "cokelee777"));
 
       AtomicInteger writeAttemptCount = new AtomicInteger(0);
       try (MockedStatic<Files> mockedFiles = mockStatic(Files.class, CALLS_REAL_METHODS)) {
@@ -91,7 +95,11 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
       // Given
       Map<String, Object> sourceTransformConfig = generateSourceConfigWithRetry(2);
       sourceTransform.configure(sourceTransformConfig);
-      SourceRecord initialSourceRecord = generateSourceRecord();
+      SourceRecord initialSourceRecord =
+          RecordFactory.sourceRecord(
+              TOPIC_NAME,
+              Map.of("id", Schema.INT64_SCHEMA, "name", Schema.STRING_SCHEMA),
+              Map.of("id", 1L, "name", "cokelee777"));
 
       try (MockedStatic<Files> mockedFiles = mockStatic(Files.class, CALLS_REAL_METHODS)) {
         // All attempts fail
@@ -110,7 +118,11 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
       // Given
       Map<String, Object> sourceTransformConfig = generateSourceConfigWithRetry(0);
       sourceTransform.configure(sourceTransformConfig);
-      SourceRecord initialSourceRecord = generateSourceRecord();
+      SourceRecord initialSourceRecord =
+          RecordFactory.sourceRecord(
+              TOPIC_NAME,
+              Map.of("id", Schema.INT64_SCHEMA, "name", Schema.STRING_SCHEMA),
+              Map.of("id", 1L, "name", "cokelee777"));
 
       AtomicInteger writeAttemptCount = new AtomicInteger(0);
       try (MockedStatic<Files> mockedFiles = mockStatic(Files.class, CALLS_REAL_METHODS)) {
@@ -163,8 +175,12 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
         assertThat(restoredSinkRecord).isNotNull();
         assertThat(readAttemptCount.get()).isGreaterThanOrEqualTo(2);
 
-        SourceRecord initialSourceRecord = generateSourceRecord();
-        validateRestoredSinkRecord(restoredSinkRecord, initialSourceRecord);
+        SourceRecord sourceRecord =
+            RecordFactory.sourceRecord(
+                TOPIC_NAME,
+                Map.of("id", Schema.INT64_SCHEMA, "name", Schema.STRING_SCHEMA),
+                Map.of("id", 1L, "name", "cokelee777"));
+        validateRestoredSinkRecord(restoredSinkRecord, sourceRecord);
       }
     }
 
@@ -224,13 +240,17 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
       sourceConfig.put(FileSystemStorageConfig.PATH_CONFIG, TEMP_DIR_PATH.toString());
       sourceTransform.configure(sourceConfig);
 
-      SourceRecord initialSourceRecord = generateSourceRecord();
+      SourceRecord initialSourceRecord =
+          RecordFactory.sourceRecord(
+              TOPIC_NAME,
+              Map.of("id", Schema.INT64_SCHEMA, "name", Schema.STRING_SCHEMA),
+              Map.of("id", 1L, "name", "cokelee777"));
       SourceRecord transformedSourceRecord = sourceTransform.apply(initialSourceRecord);
 
       Header transformedSourceHeader =
           transformedSourceRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
 
-      return generateSinkRecord(transformedSourceRecord, transformedSourceHeader);
+      return RecordFactory.sinkRecord(transformedSourceRecord, transformedSourceHeader);
     }
   }
 
@@ -256,31 +276,6 @@ class RetryFileSystemIntegrationTest extends AbstractFileSystemIntegrationTest {
     config.put(FileSystemStorageConfig.RETRY_BACKOFF_MS_CONFIG, 5L);
     config.put(FileSystemStorageConfig.RETRY_MAX_BACKOFF_MS_CONFIG, 10L);
     return config;
-  }
-
-  private SourceRecord generateSourceRecord() {
-    Schema schema =
-        SchemaBuilder.struct()
-            .field("id", Schema.INT64_SCHEMA)
-            .field("name", Schema.STRING_SCHEMA)
-            .build();
-    Struct value = new Struct(schema).put("id", 1L).put("name", "cokelee777");
-    return new SourceRecord(null, null, TOPIC_NAME, null, null, schema, value);
-  }
-
-  private SinkRecord generateSinkRecord(
-      SourceRecord transformedSourceRecord, Header transformedSourceHeader) {
-    SinkRecord sinkRecord =
-        new SinkRecord(
-            transformedSourceRecord.topic(),
-            0,
-            transformedSourceRecord.keySchema(),
-            transformedSourceRecord.key(),
-            transformedSourceRecord.valueSchema(),
-            transformedSourceRecord.value(),
-            0);
-    sinkRecord.headers().add(transformedSourceHeader);
-    return sinkRecord;
   }
 
   private void validateTransformedSourceRecord(

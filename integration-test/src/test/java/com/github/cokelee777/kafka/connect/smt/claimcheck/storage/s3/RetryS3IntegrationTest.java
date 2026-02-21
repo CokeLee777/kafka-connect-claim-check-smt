@@ -7,6 +7,7 @@ import com.github.cokelee777.kafka.connect.smt.claimcheck.ClaimCheckSourceTransf
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSinkTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.ClaimCheckSourceTransformConfig;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.config.storage.S3StorageConfig;
+import com.github.cokelee777.kafka.connect.smt.claimcheck.fixture.record.RecordFactory;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckHeader;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.model.ClaimCheckMetadata;
 import com.github.cokelee777.kafka.connect.smt.claimcheck.storage.ClaimCheckStorageType;
@@ -16,7 +17,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -62,7 +62,11 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
       Map<String, Object> sourceTransformConfig = generateSourceConfigWithToxiproxy(3);
       sourceTransform.configure(sourceTransformConfig);
 
-      SourceRecord initialSourceRecord = generateSourceRecord();
+      SourceRecord initialSourceRecord =
+          RecordFactory.sourceRecord(
+              TOPIC_NAME,
+              Map.of("id", Schema.INT64_SCHEMA, "name", Schema.STRING_SCHEMA),
+              Map.of("id", 1L, "name", "cokelee777"));
 
       // Add proxy network latency
       s3Proxy.toxics().latency("latency", ToxicDirection.DOWNSTREAM, 10);
@@ -80,7 +84,11 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
       Map<String, Object> sourceTransformConfig = generateSourceConfigWithToxiproxy(2);
       sourceTransform.configure(sourceTransformConfig);
 
-      SourceRecord initialSourceRecord = generateSourceRecord();
+      SourceRecord initialSourceRecord =
+          RecordFactory.sourceRecord(
+              TOPIC_NAME,
+              Map.of("id", Schema.INT64_SCHEMA, "name", Schema.STRING_SCHEMA),
+              Map.of("id", 1L, "name", "cokelee777"));
 
       // Completely block proxy network connection
       s3Proxy.disable();
@@ -96,7 +104,11 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
       Map<String, Object> sourceTransformConfig = generateSourceConfigWithToxiproxy(0);
       sourceTransform.configure(sourceTransformConfig);
 
-      SourceRecord initialSourceRecord = generateSourceRecord();
+      SourceRecord initialSourceRecord =
+          RecordFactory.sourceRecord(
+              TOPIC_NAME,
+              Map.of("id", Schema.INT64_SCHEMA, "name", Schema.STRING_SCHEMA),
+              Map.of("id", 1L, "name", "cokelee777"));
 
       // Completely block proxy network connection
       s3Proxy.disable();
@@ -131,7 +143,11 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
       SinkRecord restoredSinkRecord = sinkTransform.apply(initialSinkRecord);
 
       // Then
-      SourceRecord initialSourceRecord = generateSourceRecord();
+      SourceRecord initialSourceRecord =
+          RecordFactory.sourceRecord(
+              TOPIC_NAME,
+              Map.of("id", Schema.INT64_SCHEMA, "name", Schema.STRING_SCHEMA),
+              Map.of("id", 1L, "name", "cokelee777"));
       validateRestoredSinkRecord(restoredSinkRecord, initialSourceRecord);
     }
 
@@ -181,13 +197,17 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
           localstack.getEndpointOverride(LocalStackContainer.Service.S3).toString());
       sourceTransform.configure(sourceConfig);
 
-      SourceRecord initialSourceRecord = generateSourceRecord();
+      SourceRecord initialSourceRecord =
+          RecordFactory.sourceRecord(
+              TOPIC_NAME,
+              Map.of("id", Schema.INT64_SCHEMA, "name", Schema.STRING_SCHEMA),
+              Map.of("id", 1L, "name", "cokelee777"));
       SourceRecord transformedSourceRecord = sourceTransform.apply(initialSourceRecord);
 
       Header transformedSourceHeader =
           transformedSourceRecord.headers().lastWithName(ClaimCheckHeader.HEADER_KEY);
 
-      return generateSinkRecord(transformedSourceRecord, transformedSourceHeader);
+      return RecordFactory.sinkRecord(transformedSourceRecord, transformedSourceHeader);
     }
   }
 
@@ -215,31 +235,6 @@ class RetryS3IntegrationTest extends AbstractS3WithToxiproxyIntegrationTest {
     config.put(S3StorageConfig.RETRY_BACKOFF_MS_CONFIG, 5L);
     config.put(S3StorageConfig.RETRY_MAX_BACKOFF_MS_CONFIG, 10L);
     return config;
-  }
-
-  private SourceRecord generateSourceRecord() {
-    Schema schema =
-        SchemaBuilder.struct()
-            .field("id", Schema.INT64_SCHEMA)
-            .field("name", Schema.STRING_SCHEMA)
-            .build();
-    Struct value = new Struct(schema).put("id", 1L).put("name", "cokelee777");
-    return new SourceRecord(null, null, TOPIC_NAME, null, null, schema, value);
-  }
-
-  private SinkRecord generateSinkRecord(
-      SourceRecord transformedSourceRecord, Header transformedSourceHeader) {
-    SinkRecord sinkRecord =
-        new SinkRecord(
-            transformedSourceRecord.topic(),
-            0,
-            transformedSourceRecord.keySchema(),
-            transformedSourceRecord.key(),
-            transformedSourceRecord.valueSchema(),
-            transformedSourceRecord.value(),
-            0);
-    sinkRecord.headers().add(transformedSourceHeader);
-    return sinkRecord;
   }
 
   private void validateTransformedSourceRecord(

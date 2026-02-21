@@ -1,4 +1,9 @@
 dependencies {
     // Core
     implementation project(':core')
+
+    // Kafka Connect
+    compileOnly "org.apache.kafka:connect-api:${kafkaVersion}"
+    compileOnly "org.apache.kafka:connect-transforms:${kafkaVersion}"
+    compileOnly "org.apache.kafka:connect-json:${kafkaVersion}"
 }
